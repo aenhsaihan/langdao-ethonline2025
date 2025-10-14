@@ -1,9 +1,14 @@
 # LangDAO
 
-**LangDAO** helps people use their language skills to learn, teach, and earn crypto in Web3.
+**Mission:** Helping people worldwide use their **language skills** to **learn, teach, and earn crypto** in Web3.
 
-- 🌍 First test region: Latin America
-- 🧩 Core integrations: Huddle01 + POAP
-- 🧠 Focus: Skill-based onboarding & decentralized education
+- 🌍 **Global** by design — **LatAm** as the first test region
+- 🧩 Core integrations: **Huddle01** (live sessions), **POAP** (credentials)
+- 🎯 Focus: Skill-based onboarding, community learning, and fair incentives
 
-Check back for technical docs, MVP plans, and architecture!
+➡ Start here:
+
+- **What we’re building:** [Product Overview](product/overview.md)
+- **What ships for the hackathon:** [MVP Scope](product/scope-mvp.md)
+- **How it works under the hood:** [Architecture](../tech/architecture.md)
+- **Why LatAm first:** [Testbed rationale](product/testbed-latam.md)

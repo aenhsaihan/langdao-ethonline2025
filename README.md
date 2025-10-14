@@ -2,6 +2,8 @@
 
 🌎 Empowering people worldwide to use their language skills to learn, teach, and earn in Web3
 
+[![Docs](https://img.shields.io/badge/docs-website-blue)](https://aenhsaihan.github.io/langdao-ethonline2025)
+
 # LangDAO
 
 > Helping people worldwide use their **language skills** to **teach and earn crypto** in Web3.

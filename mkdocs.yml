@@ -1,4 +1,6 @@
 site_name: LangDAO
+site_description: Helping people use their language skills to learn, teach, and earn in Web3.
+repo_url: https://github.com/aenhsaihan/langdao-ethonline2025
 nav:
   - Home: index.md
   - Product:
@@ -11,6 +13,11 @@ nav:
       - Integrations: tech/integrations.md
   - Research:
       - Assumptions: research/assumptions.md
-      - Decisions (ADRs): adr/0001-huddle01.md
+      - Decisions (ADRs):
+          - 0001 - Huddle01 Integration: adr/0001-huddle01.md
 theme:
   name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - content.code.copy
