@@ -1,0 +1,16 @@
+site_name: LangDAO
+nav:
+  - Home: index.md
+  - Product:
+      - Overview: product/overview.md
+      - MVP Scope: product/scope-mvp.md
+      - Roadmap: product/roadmap.md
+      - Testbed (LatAm): product/testbed-latam.md
+  - Tech:
+      - Architecture: tech/architecture.md
+      - Integrations: tech/integrations.md
+  - Research:
+      - Assumptions: research/assumptions.md
+      - Decisions (ADRs): adr/0001-huddle01.md
+theme:
+  name: material
