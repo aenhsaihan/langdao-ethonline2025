@@ -10,5 +10,5 @@
 
 - **What we’re building:** [Product Overview](product/overview.md)
 - **What ships for the hackathon:** [MVP Scope](product/scope-mvp.md)
-- **How it works under the hood:** [Architecture](/tech/architecture.md)
+- **How it works under the hood:** [Architecture](tech/architecture.md)
 - **Why LatAm first:** [Testbed rationale](product/testbed-latam.md)

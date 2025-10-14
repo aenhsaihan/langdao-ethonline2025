@@ -2,6 +2,10 @@ name: Build & Deploy Docs
 on:
   push:
     branches: [main]
+
+permissions:
+  contents: write # <-- allow pushing to gh-pages
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,3 +20,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
+          publish_branch: gh-pages # optional, defaults to gh-pages
+          force_orphan: true # helpful on first publish if branch missing/protected
