@@ -3,7 +3,7 @@
 **Mission:** Helping people worldwide use their **language skills** to **learn, teach, and earn crypto** in Web3.
 
 - 🌍 **Global** by design — **LatAm** as the first test region
-- 🧩 Core integrations: **Huddle01** (live sessions), **POAP** (credentials)
+- 🧩 Core integrations: **Huddle01** (live sessions), **POAP** (credentials), **Superfluid/Sablier** (streaming payments)
 - 🎯 Focus: Skill-based onboarding, community learning, and fair incentives
 
 ➡ Start here:
