@@ -55,14 +55,7 @@ flowchart TD
   A -->|completion| CRED
   A -->|rating| RAT
   B -->|rating| RAT
-
-
-
-
-
-
-
-
+```
 
 # Architecture (High-Level)
 
@@ -116,4 +109,7 @@ Reward Reminder / Claim payment(testnet)
 - **Chainlink**: attestations / automation for scheduled tasks.
 - **Reputation**: simple on-chain badges → aggregated contributor profile.
 - **Storage**: IPFS/Arweave for session metadata or recordings if needed.
+
+```
+
 ```
