@@ -150,6 +150,70 @@ sequenceDiagram
 - Timeout tunable (5 s, 10 s, 15 s).
 - Logs feed optional analytics (“average disconnect time”).
 
+## Component 3A — Matchmaker (Roulette “find tutor now”)
+
+**Purpose**: pair a student with an available, matching tutor quickly, confirm the rate/cap, and hand off to escrow → call.
+
+### Assumptions
+
+- Student specifies **filters**: language, level, **max rate**, credential (optional SBT).
+- Tutor sets **availability** + **per-second/minute rate** and optional credentials.
+- We pre-check **student balance/cap** before proposing.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant MM as Matchmaker API
+  participant Tutor as Tutor dApp
+  participant Wallet as Wallet/Balance
+  participant Escrow as Escrow Contract
+  participant Huddle as Huddle01
+
+  Student->>Wallet: read balance / max spend cap
+  Student->>MM: findNow({lang, level, maxRate, credReq, cap})
+  MM->>MM: filter tutors: online ∧ rate<=maxRate ∧ cred ok
+  alt no tutors
+    MM-->>Student: none available → suggest booking/waitlist
+    Note over Student,MM: END (no match)
+  else candidates exist
+    MM->>Tutor: proposal({rate, estCap, filters}) (30s ttl)
+    alt tutor accepts
+      Tutor-->>MM: accept
+      MM->>Huddle: create room token (ephemeral)
+      MM-->>Student: matchFound({tutor, rate, roomToken, cap})
+      Student->>Escrow: deposit(cap), startSessionIntent(rate,tutor)
+      alt deposit OK
+        Escrow-->>Student: sessionId
+        Student->>Huddle: join(roomToken)
+        Tutor->>Huddle: join(roomToken)
+        Note over Student,Tutor: handoff to Heartbeat + Escrow component
+      else deposit fails / too low
+        Escrow-->>Student: insufficient funds
+        MM-->>Student: retry / reduce cap
+      end
+    else tutor times out / declines
+      Tutor-->>MM: decline/timeout
+      MM->>MM: try next candidate (max N attempts)
+      MM-->>Student: (optional) still matching… spinner
+    end
+  end
+```
+
+### Behavior
+
+- **Filter** → **Propose** → **Accept** loop with **short TTL** to keep UX snappy.
+- **Balance & cap pre-check** avoids proposing rates the student can’t afford.
+- **Rate lock** at acceptance (for the session intent), so no last-second changes.
+- On **accept**, we **create room**, then require **escrow deposit** before join.
+- If **escrow fails**, offer **retry** or **reduce cap**; the tutor can be auto-released.
+
+### Edge cases & timeouts
+
+- No tutors → offer **booking** or **waitlist ping**.
+- Tutor non-response → **retry next** (max N attempts, e.g., 3).
+- Race conditions (two students propose same tutor): first **valid accept** wins; others get retry.
+
 # Architecture (High-Level)
 
 ## Diagram
