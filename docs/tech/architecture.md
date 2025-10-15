@@ -278,6 +278,53 @@ sequenceDiagram
 - **Automation**: Cal/Notif triggers prevent manual coordination.
 - **Handoff**: identical to roulette after join → no duplicate logic.
 
+## Component 4 — Credentials & Ratings
+
+**Purpose**: after every session, issue a verifiable proof of participation and update both participants’ reputations.
+for vetted tutors, issue a **Soul-Bound Token (SBT)** to unlock credential-gated rooms.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant Tutor as Tutor dApp
+  participant ESC as Escrow Contract
+  participant POAP as POAP API / Mint Contract
+  participant DAO as Vetting DAO / SBT Issuer
+  participant IPFS as Ratings Storage
+
+  ESC-->>Student: sessionSettled(eventId)
+  Student->>POAP: mintPOAP(eventId, sig)
+  POAP-->>Student: tokenId (POAP NFT)
+  Note over Student,POAP: proof of session = credential #1
+
+  Student->>IPFS: uploadRating({tutorId, score, text})
+  IPFS-->>Student: cid
+  Student->>ESC: recordRatingHash(cid)
+  ESC-->>Tutor: reputationUpdate(cid)
+
+  alt DAO vetting process
+    Tutor->>DAO: applyForCredential({proofs, ratings})
+    DAO-->>Tutor: verify + mint SBT
+    Tutor->>SBT: hold soul-bound credential
+  end
+```
+
+### Credential Types
+
+| Type                   | Purpose                          | Who mints                      | Transferable | Example                            |
+| :--------------------- | :------------------------------- | :----------------------------- | :----------: | :--------------------------------- |
+| POAP                   | Proof of attendance / completion | automatic API                  |      ✅      | Student finishes a lesson          |
+| SBT (Tutor Credential) | DAO-vetted qualification         | DAO governance                 |      ❌      | “Certified Spanish native speaker” |
+| Rating Record          | Session feedback                 | student → IPFS + hash on-chain |     n/a      | 5 stars, comment                   |
+
+### Logic Highlights
+
+- **Automatic POAP**: triggered by sessionSettled; minimal friction.
+- **Reputation anchor**: each rating = IPFS CID + hash on-chain → verifiable, append-only.
+- DAO vetting: a DAO multisig reviews proofs/ratings → issues an SBT NFT.
+- Access control: smart-contract rooms or filters check balanceOf(SBT) > 0.
+
 # Architecture (High-Level)
 
 ## Diagram
