@@ -214,6 +214,70 @@ sequenceDiagram
 - Tutor non-response → **retry next** (max N attempts, e.g., 3).
 - Race conditions (two students propose same tutor): first **valid accept** wins; others get retry.
 
+## Component 3B — Matchmaker (Booking Flow)
+
+**Purpose**: let students **book tutors in advance**, ensure **both confirm**, and automatically trigger the **escrow + call** flow at the appointment time.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant MM as Matchmaker API
+  participant Tutor as Tutor dApp
+  participant Cal as Calendar / Scheduler
+  participant Escrow as Escrow Contract
+  participant Huddle as Huddle01
+  participant Notif as Notification Service
+
+  Student->>MM: requestBooking({tutorId, dateTime, duration, rateCap})
+  MM->>Tutor: proposeSlot({dateTime, duration, rateCap})
+  alt tutor accepts
+    Tutor-->>MM: accept
+    MM->>Cal: createEvent({student, tutor, time, duration})
+    Cal-->>MM: eventId
+    MM->>Notif: sendConfirmation(emails/push to both)
+    Notif-->>Student: booking confirmed
+    Notif-->>Tutor: booking confirmed
+  else tutor declines
+    Tutor-->>MM: decline
+    MM-->>Student: suggest new slot / other tutors
+    Note over MM: END (no booking)
+  end
+
+  %% Day-of-Session automation
+  Notif->>Student: reminder T-30 min
+  Notif->>Tutor: reminder T-30 min
+  Cal->>MM: trigger start window (T-5 min)
+
+  MM->>Huddle: createRoomToken(eventId)
+  MM->>Escrow: preAuthSession({student,tutor,rate,durationCap})
+  Escrow-->>MM: sessionIntent ok
+  MM-->>Student: joinLink + depositPrompt
+  Student->>Escrow: deposit(cap)
+  Student->>Huddle: join(roomToken)
+  Tutor->>Huddle: join(roomToken)
+
+  Note over Huddle: handoff → Heartbeat & Escrow components
+```
+
+### Behavior Summary
+
+| Phase         | Who                  | Action                                     |
+| :------------ | :------------------- | :----------------------------------------- |
+| Proposal      | Student -> Tutor     | request slot (date, duration, rateCap)     |
+| Confirmation  | Tutor                | accept/decline → calendar entry            |
+| Reminders     | Notification service | 30 min & 5 min pre-session                 |
+| Pre-fund      | Student              | deposits cap before start                  |
+| Session Start | System               | opens Huddle room + Escrow intent          |
+| Live Call     | Both                 | proceeds under Heartbeat + Auto-Stop rules |
+
+### Key Properties
+
+- **Double opt-in**: prevents ghost bookings.
+- **Pre-authorization**: ensures funds exist before the room opens.
+- **Automation**: Cal/Notif triggers prevent manual coordination.
+- **Handoff**: identical to roulette after join → no duplicate logic.
+
 # Architecture (High-Level)
 
 ## Diagram
