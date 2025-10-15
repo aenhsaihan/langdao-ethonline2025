@@ -1,23 +1,91 @@
+# Architecture (MVP)
+
+This MVP lets a **Tutor** go online with a per-minute/per-second rate, and a **Student**:
+
+- match via **roulette** or booking
+- pay **only for time in call**
+- get auto **call cutoff** when balance ends or either side disconnects
+- receive **POAP/credential** (optional)
+- rate the tutor and track progress
+
+We minimize contracts to what’s essential for **time-billed calls** and **auto-stop**.
+
+---
+
+## High-level Components
+
+```mermaid
+flowchart TD
+  subgraph CLIENT [Client]
+    A[Student dApp - Next.js]
+    B[Tutor dApp - Next.js]
+    WC[Wallet Connect]
+  end
+
+  subgraph REALTIME [Realtime Layer]
+    H[Huddle01 SDK - WebRTC Rooms]
+  end
+
+  subgraph BACKEND [Backend Minimal]
+    M[Matchmaker API - roulette and booking]
+    HB[Heartbeat Service - 5s ping]
+    REL[Relayer - stops sessions]
+  end
+
+  subgraph ONCHAIN [On-chain Components]
+    ESC[Session Escrow - prefund start stop settle]
+    PAY[Time Accrual - per second calc]
+    CRED[Credentials - POAP or SBT]
+    RAT[Ratings - on chain or IPFS]
+  end
+
+  A -->|wallet auth| WC
+  B -->|wallet auth| WC
+  A --> M
+  B --> M
+  M --> H
+  A -->|join or leave| HB
+  B -->|join or leave| HB
+  HB -->|disconnect or low balance stop| REL
+  REL -->|tx| ESC
+  A -->|funds approve| ESC
+  ESC --> PAY
+  H -->|live call| A
+  H -->|live call| B
+  A -->|completion| CRED
+  A -->|rating| RAT
+  B -->|rating| RAT
+
+
+
+
+
+
+
+
+
 # Architecture (High-Level)
 
 ## Diagram
 
 ```
- Learner / Contributor (Wallet)
-                │
-                ▼
-        Frontend (Next.js / React)
-                │
-     ┌──────────┼───────────────────────────────┐
-     │          │                               │
-     ▼          ▼                               ▼
- Wallet      Huddle01 SDK                Credential Mint
- Connect     (Live Sessions)             (POAP or minimal ERC-721)
- (wagmi/viem)   │                               │
-                └───────────► Completion Signal │
-                                                  │
-                                                  ▼
-                                      Reward Reminder / Claim payment(testnet)
+
+Learner / Contributor (Wallet)
+│
+▼
+Frontend (Next.js / React)
+│
+┌──────────┼───────────────────────────────┐
+│ │ │
+▼ ▼ ▼
+Wallet Huddle01 SDK Credential Mint
+Connect (Live Sessions) (POAP or minimal ERC-721)
+(wagmi/viem) │ │
+└───────────► Completion Signal │
+│
+▼
+Reward Reminder / Claim payment(testnet)
+
 ```
 
 ## Components
@@ -48,3 +116,4 @@
 - **Chainlink**: attestations / automation for scheduled tasks.
 - **Reputation**: simple on-chain badges → aggregated contributor profile.
 - **Storage**: IPFS/Arweave for session metadata or recordings if needed.
+```
