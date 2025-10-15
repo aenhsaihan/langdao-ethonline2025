@@ -101,6 +101,55 @@ stateDiagram-v2
 
 What if the user wishes to keep the current session running longer than his deposit allows? Could be a UX bug.
 
+## Component 2: Heartbeat & Auto-Stop
+
+**Purpose**: guarantee that if either peer drops from a Huddle01 call, billing halts instantly.
+
+### Concept
+
+Each participant’s client emits a signed “I’m still here” ping every N seconds to a lightweight service.
+If either side fails to send two consecutive heartbeats (≈ 10 s of silence), the service calls the on-chain `stopSession()` via a relayer.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant StudentClient as Student Client
+  participant TutorClient as Tutor Client
+  participant HeartbeatAPI as Heartbeat Service
+  participant Relayer as Relayer Bot
+  participant Escrow as Escrow Contract
+
+  loop Every 5 s
+    StudentClient->>HeartbeatAPI: POST /ping {sessionId, sig}
+    TutorClient->>HeartbeatAPI: POST /ping {sessionId, sig}
+  end
+
+  Note over HeartbeatAPI: tracks lastPing[student], lastPing[tutor]
+
+  HeartbeatAPI->>HeartbeatAPI: detect missing ping > 10 s
+  alt peer missing
+    HeartbeatAPI->>Relayer: emit "disconnect" event
+    Relayer->>Escrow: stopSession(sessionId)
+    Escrow-->>Relayer: session settled ✅
+  end
+```
+
+### Behavior Summary
+
+| Event                     | Trigger                 | Action                               |
+| :------------------------ | :---------------------- | :----------------------------------- |
+| ✅ Normal pings           | both clients responding | nothing changes                      |
+| ⚠️ One peer silent > 10 s | network loss/closed tab | Heartbeat → Relayer → stopSession()  |
+| Stop Acknowledgement      | Escrow settles          | tutor payout + student refund issued |
+
+### Implementation notes
+
+- Ping = small JSON {sessionId, walletAddr, signature}.
+- Verification = HMAC / signature ensures no spoofing.
+- Relayer = can be Biconomy, Gelato, OZ Defender or simple script with funded key.
+- Timeout tunable (5 s, 10 s, 15 s).
+- Logs feed optional analytics (“average disconnect time”).
+
 # Architecture (High-Level)
 
 ## Diagram
