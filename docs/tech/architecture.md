@@ -57,6 +57,50 @@ flowchart TD
   B -->|rating| RAT
 ```
 
+## Key ideas
+
+- **ESC** (Escrow) holds student funds for a **max duration**, prevents overpaying.
+- **PAY** tracks elapsed time; settlement uses block timestamps (or a stream primitive).
+- **HB** (Heartbeat) + **Huddle01** events trigger **REL** to stop payment if either peer drops.
+- **M** pairs roulette or handles booked calls.
+- **CRED** issues POAP/SBT; **RAT** stores ratings (on-chain or IPFS with on-chain hash).
+
+## Component 1: Session Escrow (time-billed calls)
+
+**Goal**: pay the tutor only for time in call; auto-stop on cap/disconnect.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Idle
+
+  Idle --> Funded: deposit(cap, rate)<br>(by Student)
+  Funded --> Active: startSession()<br>(both joined)
+
+  Active --> Stopping: cap reached<br>(or Student ends)
+  Active --> Stopping: disconnect detected<br>(heartbeat/webRTC)
+  Active --> Stopping: tutor ends
+
+  Stopping --> Settled: settle owed = min(elapsed, cap) * rate
+  Settled --> Refunded: refund remainder (cap - elapsed)*rate
+  Refunded --> Closed
+```
+
+### What this component does (and only this)
+
+- **deposit(cap, rate)**: Student pre-funds max spend → moves to **Funded**.
+- **startSession()**: Called once both are in the room → moves to **Active**.
+- **elapsed accounting**: measured inside contract (block timestamps) or a “meter” submodule.
+- **stop triggers:**
+  - **cap reached,**
+  - **disconnect** (from heartbeat/webRTC signal relayed on-chain),
+  - **either party ends.**
+- **settle()**: pay tutor **min(elapsed, cap) × rate**, refund remainder to student.
+- **no overpaying, no post-drop leakage** by construction.
+
+#### Caveats
+
+What if the user wishes to keep the current session running longer than his deposit allows? Could be a UX bug.
+
 # Architecture (High-Level)
 
 ## Diagram
