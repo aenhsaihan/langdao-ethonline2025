@@ -15,55 +15,68 @@ We minimize contracts to what’s essential for **time-billed calls** and **auto
 ## High-level Components
 
 ```mermaid
-flowchart TD
-  subgraph CLIENT [Client]
-    A[Student dApp - Next.js]
-    B[Tutor dApp - Next.js]
-    WC[Wallet Connect]
+graph TD
+  subgraph "Client"
+    S["Student dApp - NextJS"]:::box
+    T["Tutor dApp - NextJS"]:::box
+    W["WalletConnect"]:::box
   end
 
-  subgraph REALTIME [Realtime Layer]
-    H[Huddle01 SDK - WebRTC Rooms]
+  subgraph "Realtime"
+    H["Huddle01 WebRTC Rooms"]:::svc
   end
 
-  subgraph BACKEND [Backend Minimal]
-    M[Matchmaker API - roulette and booking]
-    HB[Heartbeat Service - 5s ping]
-    REL[Relayer - stops sessions]
+  subgraph "Off-chain Services"
+    MM["Matchmaker API - Roulette & Booking"]:::svc
+    HB["Heartbeat Service - 5s signed pings"]:::svc
+    RL["Relayer Bot - authorized"]:::svc
+    NF["Notifications & Calendar"]:::svc
   end
 
-  subgraph ONCHAIN [On-chain Components]
-    ESC[Session Escrow - prefund start stop settle]
-    PAY[Time Accrual - per second calc]
-    CRED[Credentials - POAP or SBT]
-    RAT[Ratings - on chain or IPFS]
+  subgraph "On-chain / Protocol"
+    CTRL["Payment Controller - Flow Operator"]:::chain
+    STR["Streaming Protocol - Superfluid or Sablier"]:::chain
+    CRED["Credentials - POAP or SBT"]:::chain
+    RAT["Ratings (IPFS + on-chain hash)"]:::chain
+    DAO["DAO Multisig + Snapshot"]:::chain
   end
 
-  A -->|wallet auth| WC
-  B -->|wallet auth| WC
-  A --> M
-  B --> M
-  M --> H
-  A -->|join or leave| HB
-  B -->|join or leave| HB
-  HB -->|disconnect or low balance stop| REL
-  REL -->|tx| ESC
-  A -->|funds approve| ESC
-  ESC --> PAY
-  H -->|live call| A
-  H -->|live call| B
-  A -->|completion| CRED
-  A -->|rating| RAT
-  B -->|rating| RAT
+  S -->|auth| W
+  T -->|auth| W
+  S --> MM
+  T --> MM
+  MM --> H
+  S -->|join| H
+  T -->|join| H
+
+  S --> HB
+  T --> HB
+  H --> HB
+  HB --> RL
+  RL --> CTRL
+  CTRL -->|create/update/delete flow| STR
+
+  S -->|grant operator + top-ups| CTRL
+  STR -->|real-time stream| T
+
+  S --> CRED
+  T --> CRED
+  S --> RAT
+  T --> RAT
+  DAO --> CRED
+
+  classDef box fill:#0b5fff0d,stroke:#0b5fff,stroke-width:1px,color:#0b2540;
+  classDef svc fill:#ffd50014,stroke:#d4a000,stroke-width:1px,color:#5a4500;
+  classDef chain fill:#00a36b14,stroke:#008a59,stroke-width:1px,color:#0b3b2c;
 ```
 
-## Key ideas
+### Reading notes
 
-- **ESC** (Escrow) holds student funds for a **max duration**, prevents overpaying.
-- **PAY** tracks elapsed time; settlement uses block timestamps (or a stream primitive).
-- **HB** (Heartbeat) + **Huddle01** events trigger **REL** to stop payment if either peer drops.
-- **M** pairs roulette or handles booked calls.
-- **CRED** issues POAP/SBT; **RAT** stores ratings (on-chain or IPFS with on-chain hash).
+- **Matchmaker** handles roulette/booking, then hands off to **Huddle01** for the live session.
+- **Heartbeat** watches WebRTC + pings; **Relayer → Controller** deletes the stream on drop.
+- **Controller** is pre-authorized by the student (flow operator) to manage their stream non-interactively.
+- **Top-ups** go from Student → Controller/Protocol; funds stream to Tutor in real time.
+- **Credentials (POAP/SBT)** and **Ratings** form the reputation layer; **DAO** issues SBTs via Snapshot + Multisig.
 
 ## Component 1: Session Escrow (time-billed calls)
 
