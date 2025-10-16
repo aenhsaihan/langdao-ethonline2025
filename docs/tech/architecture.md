@@ -329,6 +329,98 @@ sequenceDiagram
 
 - [DAO Vetting Flow](dao-vetting.md)
 
+## Component 6 — Streaming Payments with Dynamic Top-Up
+
+### Goals
+
+- Pay **exactly per second** while the call is live.
+- **No fixed cap**; student keeps talking while funded.
+- **Top up during the call** (adds balance; stream continues).
+- **Auto-stop on disconnect** without needing the student’s tx.
+
+### Key Pieces
+
+- **Streaming protocol**: Superfluid CFA (or Sablier v2 per-second).
+- **Controller contract**: has **FlowOperator** perms (Superfluid) / broker role (Sablier) for the student → can start/stop/update flows.
+- **Heartbeat service + Relayer**: listens to Huddle01 events; calls controller to stop the stream on drop.
+- **Top-ups**: student upgrades/supplies more tokens (can be gasless via Paymaster/AA if you want).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant Controller as Controller (Flow Operator)
+  participant Stream as Streaming Protocol (e.g., Superfluid)
+  participant Heartbeat as Heartbeat Service
+  participant Relayer as Relayer Bot
+  participant Tutor as Tutor Wallet
+
+  Note over Student: One-time: grant FlowOperator perms to Controller
+
+  Student->>Controller: startSession(tutor, ratePerSec)
+  Controller->>Stream: createFlow(student -> tutor, ratePerSec)
+  Stream-->>Tutor: tokens stream per-second
+  Note over Student,Stream: Student must hold/upgrade tokens as balance
+
+  par During call
+    loop Every few seconds
+      Student->>Stream: topUp(amount)  %% upgrade/mint to stream balance
+      Stream-->>Student: balance updated
+    end
+  and Heartbeat monitoring
+      Heartbeat-->>Relayer: disconnect OR balance low
+      Relayer->>Controller: stopSession(sessionId)
+      Controller->>Stream: deleteFlow(student -> tutor)
+  end
+
+  alt Student ends manually
+    Student->>Controller: stopSession()
+    Controller->>Stream: deleteFlow(student -> tutor)
+    Note over Controller,Stream: stream deleted → payment stops instantly
+  end
+```
+
+### Behavior Summary
+
+- **Start**: Student clicks “Start Session” → controller **creates a per-second** stream at the tutor’s rate.
+- During call:
+  - The student’s **streaming balance decreases**; they can **top up anytime** (send/upgrade more tokens).
+  - UI shows **time remaining at current balance**; warns early.
+- **Disconnect or end**: Heartbeat/RTC event → relayer calls controller → **stream deleted** immediately.
+- **Billing**: Exact, continuous—no settlement step needed. The tutor’s wallet accrues in real time.
+
+### Why this meets your constraints
+
+- No cap UX: the conversation can continue indefinitely, as long as funds remain.
+- Top-up live: student can add funds mid-call (even made gasless later).
+- No post-drop paying: stream is deleted by the controller when the heartbeat detects a drop—no student tx needed.
+- Tutor sets precise rate: store rate in tokens/sec, show per-minute in UI.
+
+### Minimal Contract Surface (pseudocode, not Solidity)
+
+- grantOperator(student → controller, maxRate) — one-time user consent.
+- startSession(student, tutor, ratePerSec) → create flow (enforce ratePerSec <= maxRate).
+- stopSession(sessionId) → delete flow (callable by student, tutor, or relayer).
+- (Optional) updateRate(newRatePerSec) during call if both sides accept.
+
+> Superfluid specifics: student grants the Controller FlowOperator permissions (create/update/delete flows) scoped by allowances; Controller uses CFAv1 to manage the stream.
+> Sablier v2: use a broker/mediator stream that the Controller can cancel.
+
+### Top-Up UX Notes
+
+- Warn at thresholds (e.g., 10 min, 3 min remaining at current rate).
+- Provide one-click top-up (send/upgrade stablecoin) and consider a gasless paymaster.
+- If balance dips below protocol buffer, pause or delete flow before liquidation.
+
+### Failure / Edge Cases
+
+| Case                             | Outcome                                                                                           |
+| :------------------------------- | :------------------------------------------------------------------------------------------------ |
+| Student wallet runs out mid-call | Stream pauses/stops; UI prompts top-up; call can continue without billing (or you auto-end call). |
+| Student hard disconnects         | Heartbeat → Relayer → Controller deletes stream immediately.                                      |
+| Tutor disconnects                | Same path; stream stops; student not charged further.                                             |
+| Controller down                  | Worst case: stream continues until student manually stops; mitigate with redundant relayers/cron. |
+
 # Architecture (High-Level)
 
 ## Diagram
