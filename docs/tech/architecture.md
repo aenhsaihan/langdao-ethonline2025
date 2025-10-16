@@ -113,26 +113,42 @@ If either side fails to send two consecutive heartbeats (≈ 10 s of silence), t
 ```mermaid
 sequenceDiagram
   autonumber
-  participant StudentClient as Student Client
-  participant TutorClient as Tutor Client
-  participant HeartbeatAPI as Heartbeat Service
+  participant Student as Student Client
+  participant Tutor as Tutor Client
+  participant Huddle as Huddle01 (WebRTC)
+  participant Heartbeat as Heartbeat Service
   participant Relayer as Relayer Bot
-  participant Escrow as Escrow Contract
+  participant Controller as Payment Controller
+  participant Stream as Streaming Protocol
 
-  loop Every 5 s
-    StudentClient->>HeartbeatAPI: POST /ping {sessionId, sig}
-    TutorClient->>HeartbeatAPI: POST /ping {sessionId, sig}
+  %% Start of call (elsewhere: Matchmaker + Controller.startSession)
+  Student->>Huddle: join()
+  Tutor->>Huddle: join()
+
+  %% Periodic liveness pings
+  loop every 5s
+    Student->>Heartbeat: POST /ping {sessionId, sig}
+    Tutor->>Heartbeat: POST /ping {sessionId, sig}
   end
 
-  Note over HeartbeatAPI: tracks lastPing[student], lastPing[tutor]
+  Note over Heartbeat: tracks lastPing for both peers
 
-  HeartbeatAPI->>HeartbeatAPI: detect missing ping > 10 s
-  alt peer missing
-    HeartbeatAPI->>Relayer: emit "disconnect" event
-    Relayer->>Escrow: stopSession(sessionId)
-    Escrow-->>Relayer: session settled ✅
+  %% Disconnect from Huddle or missing pings
+  Huddle-->>Heartbeat: peer-left / connectionState=failed
+  Heartbeat->>Heartbeat: OR detect missing ping > 10s
+
+  alt disconnect or missing ping
+    Heartbeat-->>Relayer: emit "disconnect(sessionId)"
+    Relayer->>Controller: stopSession(sessionId)
+    Controller->>Stream: deleteFlow(student -> tutor)
+    Note over Controller,Stream: Stream deleted → payment stops instantly
   end
 ```
+
+### Key changes
+
+- Heartbeat no longer calls escrow; it instructs the **Controller** to **delete the live stream** (Superfluid/Sablier) so **billing halts immediately**.
+- The note is placed _inside_ a valid branch to avoid Mermaid parse errors.
 
 ### Behavior Summary
 
