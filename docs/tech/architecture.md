@@ -325,6 +325,10 @@ sequenceDiagram
 - DAO vetting: a DAO multisig reviews proofs/ratings → issues an SBT NFT.
 - Access control: smart-contract rooms or filters check balanceOf(SBT) > 0.
 
+## Component 5 — DAO Vetting Flow (Tutor Credential SBT)
+
+- [DAO Vetting Flow](dao-vetting.md)
+
 # Architecture (High-Level)
 
 ## Diagram
