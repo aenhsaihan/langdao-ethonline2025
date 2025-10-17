@@ -93,9 +93,9 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "string",
+              internalType: "uint256",
               name: "language",
-              type: "string",
+              type: "uint256",
             },
           ],
           name: "SessionStarted",
@@ -161,9 +161,9 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "_sessionId",
-              type: "uint256",
+              internalType: "address",
+              name: "tutorAddress",
+              type: "address",
             },
           ],
           name: "endSession",
@@ -363,9 +363,9 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "_sessionId",
-              type: "uint256",
+              internalType: "address",
+              name: "tutorAddress",
+              type: "address",
             },
           ],
           name: "processPayment",
@@ -407,9 +407,9 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
+              internalType: "address",
               name: "",
-              type: "uint256",
+              type: "address",
             },
           ],
           name: "sessions",
@@ -467,13 +467,18 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "_tutorAddress",
+              name: "_studentAddress",
               type: "address",
             },
             {
               internalType: "uint256",
               name: "_language",
               type: "uint256",
+            },
+            {
+              internalType: "address",
+              name: "_token",
+              type: "address",
             },
           ],
           name: "startSession",
