@@ -76,7 +76,11 @@ Millions have skills but no clear path to earn in Web3. Learning is scattered, i
    cd webapp/packages/hardhat
    npm run chain
 
-   # Terminal 2: Start frontend
+   # Terminal 2: Deploy to local blockchain
+   cd webapp/packages/hardhat
+   npm run deploy
+
+   # Terminal 3: Start frontend
    cd webapp/packages/nextjs
    npm run dev
    ```
