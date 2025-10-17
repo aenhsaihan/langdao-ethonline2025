@@ -29,26 +29,11 @@ interface IERC20 {
 }
 
 contract LangDAO {
-    // ============ ENUMS ============
-
-    // enum AvailabilityStatus {
-    //     Offline,
-    //     Available,
-    //     InSession
-    // }
-
-    enum SessionStatus {
-        Active,
-        Completed,
-        Cancelled
-    }
-
     // ============ STRUCTS ============
     struct Tutor {
         uint256[] languages; // Languages they can teach/learn TODO: might not need this
         uint256 ratePerSecond; // Rate in wei per second
         uint256 totalEarnings; // Total earnings as tutor
-        // uint256 totalSpent; // Total spent as student
         uint256 sessionCount; // Total sessions participated in
         bool isRegistered;
     }
@@ -56,11 +41,11 @@ contract LangDAO {
     struct Session {
         address student;
         address tutor;
+        address token;
         uint256 startTime;
         uint256 endTime;
         uint256 ratePerSecond;
         uint256 totalPaid;
-        SessionStatus status;
         uint256 language; // Language being taught/learned
         bool isActive;
     }
@@ -81,7 +66,7 @@ contract LangDAO {
 
     event TutorRegistered(address indexed user, uint256[] languages, uint256 ratePerHour);
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
-    event SessionEnded(uint256 indexed sessionId, uint256 duration, uint256 totalPaid);
+    event SessionEnded(address indexed tutorAddress, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
 
     // ============ MODIFIERS ============
@@ -168,8 +153,9 @@ contract LangDAO {
         // TODO: Implement session start logic
         // - Validate tutor is available and registered
         // - Check if student has sufficient balance
+        // uint256 buffer = 10 minutes;
         require(
-            IERC20(_token).balanceOf(_studentAddress) >= tutors[msg.sender].ratePerSecond,
+            IERC20(_token).balanceOf(_studentAddress) >= tutors[msg.sender].ratePerSecond * 10 minutes,
             "Student does not have sufficient balance"
         );
 
@@ -178,16 +164,15 @@ contract LangDAO {
         sessions[msg.sender] = Session({
             student: _studentAddress,
             tutor: msg.sender,
+            token: _token,
             startTime: block.timestamp,
             endTime: 0,
             ratePerSecond: tutors[msg.sender].ratePerSecond,
             totalPaid: 0,
-            status: SessionStatus.Active,
             language: _language,
             isActive: true
         });
 
-        // - Update user statuses to InSession
         // - Emit SessionStarted event
         sessionCounter++;
         emit SessionStarted(sessionCounter, _studentAddress, msg.sender, _language);
@@ -200,27 +185,38 @@ contract LangDAO {
      * End an active session
      * @param tutorAddress Tutor address of the session to end
      */
-    function endSession(address tutorAddress) external onlyActiveSession(tutorAddress) {
-        // TODO: Implement session end logic
-        // - Validate caller is student, tutor, or authorized service
-        // - Calculate total payment based on duration
-        // - Process payment from student to tutor
-        // - Update session status and end time
-        // - Update user statistics
-        // - Emit SessionEnded event
-    }
 
-    /**
-     * Process per-second payment for active session
-     * @param tutorAddress Tutor address of the active session
-     */
-    function processPayment(address tutorAddress) external onlyActiveSession(tutorAddress) {
-        // TODO: Implement per-second payment logic
-        // - Calculate payment for current second
-        // - Check student has sufficient balance
-        // - Transfer payment to tutor
-        // - Update session totalPaid
-        // - Emit PaymentProcessed event
+    // here the student or tutor has hung up the call
+    // or student/tutor were disconnected, and our system has ended the session
+    function endSession(address tutorAddress) external onlyActiveSession(tutorAddress) {
+        // - Validate caller is student, tutor, or authorized service
+        require(
+            msg.sender == sessions[tutorAddress].student ||
+                msg.sender == sessions[tutorAddress].tutor ||
+                msg.sender == owner,
+            "Caller is not the student, tutor nor owner"
+        );
+
+        Session storage session = sessions[tutorAddress];
+        // - Calculate total payment based on duration
+        uint256 duration = block.timestamp - session.startTime;
+        uint256 totalPayment = duration * session.ratePerSecond;
+        // - Process payment from student to tutor
+        IERC20(session.token).transferFrom(session.student, session.tutor, totalPayment);
+        // - Update session status and end time
+        session.totalPaid += totalPayment;
+
+        // - Update user statistics
+        session.endTime = block.timestamp;
+
+        Tutor storage tutor = tutors[session.tutor];
+        tutor.totalEarnings += totalPayment;
+        tutor.sessionCount++;
+
+        // - Emit SessionEnded event
+        emit SessionEnded(session.tutor, duration, totalPayment);
+
+        delete sessions[tutorAddress];
     }
 
     // ============ VIEW FUNCTIONS ============
