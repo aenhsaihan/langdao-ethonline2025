@@ -222,17 +222,6 @@ contract LangDAO {
     // ============ VIEW FUNCTIONS ============
 
     /**
-     * Get available tutors for a specific language
-     * @param _language Language to search for
-     * @return Array of available tutor addresses
-     */
-    function getAvailableTutors(string memory _language) external view returns (address[] memory) {
-        // TODO: Implement tutor lookup logic
-        // - Return tutors available for the specified language
-        // - Filter by availability status
-    }
-
-    /**
      * Get user's session history
      * @param _userAddress Address of the user
      * @return Array of session IDs
@@ -264,17 +253,6 @@ contract LangDAO {
     }
 
     // ============ UTILITY FUNCTIONS ============
-
-    /**
-     * Convert hourly rate to per-second rate
-     * @param _ratePerHour Rate per hour in wei
-     * @return Rate per second in wei
-     */
-    function convertToPerSecond(uint256 _ratePerHour) public pure returns (uint256) {
-        // TODO: Implement rate conversion
-        // - Convert hourly rate to per-second rate
-        // - Handle precision properly
-    }
 
     /**
      * Check if user has sufficient balance for session
