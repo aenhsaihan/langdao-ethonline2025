@@ -6,7 +6,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
 const deployedContracts = {
   31337: {
-    YourContract: {
+    LangDAO: {
       address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       abi: [
         {
@@ -26,39 +26,341 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
-              name: "greetingSetter",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "enum LangDAO.AvailabilityStatus",
+              name: "status",
+              type: "uint8",
+            },
+          ],
+          name: "AvailabilityUpdated",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentProcessed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "sessionId",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "duration",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalPaid",
+              type: "uint256",
+            },
+          ],
+          name: "SessionEnded",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "sessionId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "tutor",
               type: "address",
             },
             {
               indexed: false,
               internalType: "string",
-              name: "newGreeting",
+              name: "language",
               type: "string",
             },
-            {
-              indexed: false,
-              internalType: "bool",
-              name: "premium",
-              type: "bool",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "value",
-              type: "uint256",
-            },
           ],
-          name: "GreetingChange",
+          name: "SessionStarted",
           type: "event",
         },
         {
-          inputs: [],
-          name: "greeting",
-          outputs: [
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "enum LangDAO.UserType",
+              name: "userType",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "string[]",
+              name: "languages",
+              type: "string[]",
+            },
+          ],
+          name: "UserRegistered",
+          type: "event",
+        },
+        {
+          inputs: [
             {
               internalType: "string",
               name: "",
               type: "string",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "availableTutorsByLanguage",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_ratePerHour",
+              type: "uint256",
+            },
+          ],
+          name: "convertToPerSecond",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "emergencyEndSession",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "endSession",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "_language",
+              type: "string",
+            },
+          ],
+          name: "getAvailableTutors",
+          outputs: [
+            {
+              internalType: "address[]",
+              name: "",
+              type: "address[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "getCurrentSessionCost",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "getSession",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "student",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "tutor",
+                  type: "address",
+                },
+                {
+                  internalType: "uint256",
+                  name: "startTime",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "endTime",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "ratePerSecond",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "totalPaid",
+                  type: "uint256",
+                },
+                {
+                  internalType: "enum LangDAO.SessionStatus",
+                  name: "status",
+                  type: "uint8",
+                },
+                {
+                  internalType: "string",
+                  name: "language",
+                  type: "string",
+                },
+                {
+                  internalType: "bool",
+                  name: "isActive",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct LangDAO.Session",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_userAddress",
+              type: "address",
+            },
+          ],
+          name: "getUserSessions",
+          outputs: [
+            {
+              internalType: "uint256[]",
+              name: "",
+              type: "uint256[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_userAddress",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_estimatedDuration",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "_ratePerSecond",
+              type: "uint256",
+            },
+          ],
+          name: "hasSufficientBalance",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
             },
           ],
           stateMutability: "view",
@@ -78,12 +380,107 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "processPayment",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "enum LangDAO.UserType",
+              name: "_userType",
+              type: "uint8",
+            },
+            {
+              internalType: "string[]",
+              name: "_languages",
+              type: "string[]",
+            },
+            {
+              internalType: "uint256",
+              name: "_ratePerHour",
+              type: "uint256",
+            },
+          ],
+          name: "registerUser",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
           inputs: [],
-          name: "premium",
+          name: "sessionCounter",
           outputs: [
             {
-              internalType: "bool",
+              internalType: "uint256",
               name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "sessions",
+          outputs: [
+            {
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "tutor",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "startTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "endTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "ratePerSecond",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalPaid",
+              type: "uint256",
+            },
+            {
+              internalType: "enum LangDAO.SessionStatus",
+              name: "status",
+              type: "uint8",
+            },
+            {
+              internalType: "string",
+              name: "language",
+              type: "string",
+            },
+            {
+              internalType: "bool",
+              name: "isActive",
               type: "bool",
             },
           ],
@@ -93,19 +490,80 @@ const deployedContracts = {
         {
           inputs: [
             {
+              internalType: "address",
+              name: "_tutorAddress",
+              type: "address",
+            },
+            {
               internalType: "string",
-              name: "_newGreeting",
+              name: "_language",
               type: "string",
             },
           ],
-          name: "setGreeting",
-          outputs: [],
-          stateMutability: "payable",
+          name: "startSession",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
           inputs: [],
-          name: "totalCounter",
+          name: "totalSessions",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "enum LangDAO.AvailabilityStatus",
+              name: "_status",
+              type: "uint8",
+            },
+          ],
+          name: "updateAvailability",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_ratePerHour",
+              type: "uint256",
+            },
+          ],
+          name: "updateRate",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "userSessions",
           outputs: [
             {
               internalType: "uint256",
@@ -124,12 +582,42 @@ const deployedContracts = {
               type: "address",
             },
           ],
-          name: "userGreetingCounter",
+          name: "users",
           outputs: [
             {
+              internalType: "enum LangDAO.UserType",
+              name: "userType",
+              type: "uint8",
+            },
+            {
+              internalType: "enum LangDAO.AvailabilityStatus",
+              name: "status",
+              type: "uint8",
+            },
+            {
               internalType: "uint256",
-              name: "",
+              name: "ratePerSecond",
               type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalSpent",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "sessionCount",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
             },
           ],
           stateMutability: "view",
