@@ -16,19 +16,16 @@ import "hardhat/console.sol";
  *
  * @author LangDAO Team
  */
+
 contract LangDAO {
     // ============ ENUMS ============
 
-    enum UserType {
-        Student,
-        Tutor,
-        Both
-    }
-    enum AvailabilityStatus {
-        Offline,
-        Available,
-        InSession
-    }
+    // enum AvailabilityStatus {
+    //     Offline,
+    //     Available,
+    //     InSession
+    // }
+
     enum SessionStatus {
         Active,
         Completed,
@@ -36,14 +33,11 @@ contract LangDAO {
     }
 
     // ============ STRUCTS ============
-
-    struct User {
-        UserType userType;
-        AvailabilityStatus status;
-        string[] languages; // Languages they can teach/learn
+    struct Tutor {
+        uint256[] languages; // Languages they can teach/learn TODO: might not need this
         uint256 ratePerSecond; // Rate in wei per second
         uint256 totalEarnings; // Total earnings as tutor
-        uint256 totalSpent; // Total spent as student
+        // uint256 totalSpent; // Total spent as student
         uint256 sessionCount; // Total sessions participated in
         bool isRegistered;
     }
@@ -56,26 +50,25 @@ contract LangDAO {
         uint256 ratePerSecond;
         uint256 totalPaid;
         SessionStatus status;
-        string language; // Language being taught/learned
+        uint256 language; // Language being taught/learned
         bool isActive;
     }
 
     // ============ STATE VARIABLES ============
-
     address public immutable owner;
     uint256 public sessionCounter;
     uint256 public totalSessions;
 
     // Mappings
-    mapping(address => User) public users;
+    mapping(address => Tutor) public tutors;
     mapping(uint256 => Session) public sessions;
     mapping(address => uint256[]) public userSessions; // User's session IDs
-    mapping(string => address[]) public availableTutorsByLanguage; // Language -> available tutors
+    // mapping(string => address[]) public availableTutorsByLanguage; // Language -> available tutors
+    mapping(address => mapping(uint256 => bool)) public isNative; // address -> associated language id -> true if native
 
     // ============ EVENTS ============
 
-    event UserRegistered(address indexed user, UserType userType, string[] languages);
-    event AvailabilityUpdated(address indexed user, AvailabilityStatus status);
+    event TutorRegistered(address indexed user, uint256[] languages, uint256 ratePerHour);
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, string language);
     event SessionEnded(uint256 indexed sessionId, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
@@ -87,8 +80,8 @@ contract LangDAO {
         _;
     }
 
-    modifier onlyRegisteredUser() {
-        require(users[msg.sender].isRegistered, "User not registered");
+    modifier onlyRegisteredTutors() {
+        require(tutors[msg.sender].isRegistered, "User not registered");
         _;
     }
 
@@ -98,7 +91,6 @@ contract LangDAO {
     }
 
     // ============ CONSTRUCTOR ============
-
     constructor(address _owner) {
         owner = _owner;
     }
@@ -107,34 +99,39 @@ contract LangDAO {
 
     /**
      * Register a new user (student, tutor, or both)
-     * @param _userType The type of user (Student, Tutor, or Both)
      * @param _languages Array of languages the user can teach/learn
-     * @param _ratePerHour Rate per hour (will be converted to per-second internally)
+     * @param _ratePerSecond Rate per hour (will be converted to per-second internally)
      */
-    function registerUser(UserType _userType, string[] memory _languages, uint256 _ratePerHour) external {
-        // TODO: Implement user registration logic
-        // - Check if user is already registered
-        // - Convert ratePerHour to ratePerSecond
-        // - Set user data
-        // - Emit UserRegistered event
+
+    function registerTutor(uint256[] memory _languages, uint256 _ratePerSecond) external {
+        require(!tutors[msg.sender].isRegistered, "Tutor already registered");
+        tutors[msg.sender].isRegistered = true;
+        tutors[msg.sender].ratePerSecond = _ratePerSecond;
+        tutors[msg.sender].languages = _languages;
+
+        for (uint256 i = 0; i < _languages.length; i++) {
+            isNative[msg.sender][_languages[i]] = true;
+        }
+
+        emit TutorRegistered(msg.sender, _languages, _ratePerSecond);
     }
 
-    /**
-     * Update user availability status
-     * @param _status New availability status
-     */
-    function updateAvailability(AvailabilityStatus _status) external onlyRegisteredUser {
-        // TODO: Implement availability update logic
-        // - Update user status
-        // - Add/remove from available tutors list if they're a tutor
-        // - Emit AvailabilityUpdated event
-    }
+    // /**
+    //  * Update user availability status
+    //  * @param _status New availability status
+    //  */
+    // function updateAvailability(AvailabilityStatus _status) external onlyRegisteredUser {
+    //     // TODO: Implement availability update logic
+    //     // - Update user status
+    //     // - Add/remove from available tutors list if they're a tutor
+    //     // - Emit AvailabilityUpdated event
+    // }
 
     /**
      * Update user's rate
-     * @param _ratePerHour New rate per hour
+     * @param _ratePerSecond New rate per hour
      */
-    function updateRate(uint256 _ratePerHour) external onlyRegisteredUser {
+    function updateRate(uint256 _ratePerSecond) external onlyRegisteredTutors {
         // TODO: Implement rate update logic
         // - Convert ratePerHour to ratePerSecond
         // - Update user's rate
@@ -148,10 +145,11 @@ contract LangDAO {
      * @param _language Language being taught/learned
      * @return sessionId The ID of the created session
      */
-    function startSession(
-        address _tutorAddress,
-        string memory _language
-    ) external onlyRegisteredUser returns (uint256) {
+
+    // here, the tutor has received an incoming call from the student
+    // they've accepted the call which means we are starting a session
+    // which means we need the student's address as well
+    function startSession(address _tutorAddress, uint256 _language) external onlyRegisteredTutors returns (uint256) {
         // TODO: Implement session start logic
         // - Validate tutor is available and registered
         // - Check if student has sufficient balance

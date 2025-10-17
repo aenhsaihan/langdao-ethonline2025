@@ -26,25 +26,6 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
-              name: "user",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "enum LangDAO.AvailabilityStatus",
-              name: "status",
-              type: "uint8",
-            },
-          ],
-          name: "AvailabilityUpdated",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
               name: "from",
               type: "address",
             },
@@ -131,43 +112,19 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "enum LangDAO.UserType",
-              name: "userType",
-              type: "uint8",
+              internalType: "uint256[]",
+              name: "languages",
+              type: "uint256[]",
             },
             {
               indexed: false,
-              internalType: "string[]",
-              name: "languages",
-              type: "string[]",
-            },
-          ],
-          name: "UserRegistered",
-          type: "event",
-        },
-        {
-          inputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-            {
               internalType: "uint256",
-              name: "",
+              name: "ratePerHour",
               type: "uint256",
             },
           ],
-          name: "availableTutorsByLanguage",
-          outputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
+          name: "TutorRegistered",
+          type: "event",
         },
         {
           inputs: [
@@ -300,9 +257,9 @@ const deployedContracts = {
                   type: "uint8",
                 },
                 {
-                  internalType: "string",
+                  internalType: "uint256",
                   name: "language",
-                  type: "string",
+                  type: "uint256",
                 },
                 {
                   internalType: "bool",
@@ -367,6 +324,30 @@ const deployedContracts = {
           type: "function",
         },
         {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "isNative",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
           inputs: [],
           name: "owner",
           outputs: [
@@ -395,22 +376,17 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "enum LangDAO.UserType",
-              name: "_userType",
-              type: "uint8",
-            },
-            {
-              internalType: "string[]",
+              internalType: "uint256[]",
               name: "_languages",
-              type: "string[]",
+              type: "uint256[]",
             },
             {
               internalType: "uint256",
-              name: "_ratePerHour",
+              name: "_ratePerSecond",
               type: "uint256",
             },
           ],
-          name: "registerUser",
+          name: "registerTutor",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -474,9 +450,9 @@ const deployedContracts = {
               type: "uint8",
             },
             {
-              internalType: "string",
+              internalType: "uint256",
               name: "language",
-              type: "string",
+              type: "uint256",
             },
             {
               internalType: "bool",
@@ -495,9 +471,9 @@ const deployedContracts = {
               type: "address",
             },
             {
-              internalType: "string",
+              internalType: "uint256",
               name: "_language",
-              type: "string",
+              type: "uint256",
             },
           ],
           name: "startSession",
@@ -527,21 +503,42 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "enum LangDAO.AvailabilityStatus",
-              name: "_status",
-              type: "uint8",
+              internalType: "address",
+              name: "",
+              type: "address",
             },
           ],
-          name: "updateAvailability",
-          outputs: [],
-          stateMutability: "nonpayable",
+          name: "tutors",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "ratePerSecond",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "sessionCount",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
           type: "function",
         },
         {
           inputs: [
             {
               internalType: "uint256",
-              name: "_ratePerHour",
+              name: "_ratePerSecond",
               type: "uint256",
             },
           ],
@@ -569,55 +566,6 @@ const deployedContracts = {
               internalType: "uint256",
               name: "",
               type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "users",
-          outputs: [
-            {
-              internalType: "enum LangDAO.UserType",
-              name: "userType",
-              type: "uint8",
-            },
-            {
-              internalType: "enum LangDAO.AvailabilityStatus",
-              name: "status",
-              type: "uint8",
-            },
-            {
-              internalType: "uint256",
-              name: "ratePerSecond",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "totalEarnings",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "totalSpent",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "sessionCount",
-              type: "uint256",
-            },
-            {
-              internalType: "bool",
-              name: "isRegistered",
-              type: "bool",
             },
           ],
           stateMutability: "view",
