@@ -30,6 +30,11 @@ interface IERC20 {
 
 contract LangDAO {
     // ============ STRUCTS ============
+    struct Student {
+        uint256 targetLanguage;
+        uint256 budgetPerSec;
+        bool isActive;
+    }
     struct Tutor {
         uint256[] languages; // Languages they can teach/learn TODO: might not need this
         uint256 ratePerSecond; // Rate in wei per second
@@ -56,6 +61,7 @@ contract LangDAO {
     uint256 public totalSessions;
 
     // Mappings
+    mapping(address => Student) public activeStudents;
     mapping(address => Tutor) public tutors;
     mapping(address => Session) public sessions;
     // mapping(address => uint256[]) public userSessions; // User's session IDs
@@ -66,6 +72,7 @@ contract LangDAO {
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
     event SessionEnded(address indexed tutorAddress, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
+    event AvailabilityUpdated(address indexed user, uint256 targetLanguage, uint256 budgetPerSec);
 
     // ============ MODIFIERS ============
 
@@ -106,16 +113,25 @@ contract LangDAO {
         emit TutorRegistered(msg.sender, _languages, _ratePerSecond);
     }
 
-    // /**
-    //  * Update user availability status
-    //  * @param _status New availability status
-    //  */
-    // function updateAvailability(AvailabilityStatus _status) external onlyRegisteredUser {
-    //     // TODO: Implement availability update logic
-    //     // - Update user status
-    //     // - Add/remove from available tutors list if they're a tutor
-    //     // - Emit AvailabilityUpdated event
-    // }
+    /**
+     * Update user availability status
+     */
+    function updateAvailability(uint256 _targetLanguage, uint256 _budgetPerSec, bool _isActive) external {
+        // TODO: Implement availability update logic
+        // - Update user status
+        // - Add/remove from available tutors list if they're a tutor
+        // - Emit AvailabilityUpdated event
+
+        if (_isActive) {
+            activeStudents[msg.sender].isActive = true;
+            activeStudents[msg.sender].targetLanguage = _targetLanguage;
+            activeStudents[msg.sender].budgetPerSec = _budgetPerSec;
+            emit AvailabilityUpdated(msg.sender, _targetLanguage, _budgetPerSec);
+        } else {
+            delete activeStudents[msg.sender];
+            emit AvailabilityUpdated(msg.sender, 0, 0);
+        }
+    }
 
     /**
      * Update user's rate
@@ -148,12 +164,21 @@ contract LangDAO {
         // - Validate tutor is available and registered
         // - Check if student has sufficient balance
         // uint256 buffer = 10 minutes;
+        require(!sessions[msg.sender].isActive, "There should be no ongoing session for this tutor");
+        require(activeStudents[_studentAddress].isActive, "Student is not active");
+        require(
+            activeStudents[_studentAddress].targetLanguage == _language,
+            "Student does not have the target language"
+        );
+        require(
+            activeStudents[_studentAddress].budgetPerSec >= tutors[msg.sender].ratePerSecond,
+            "Student does not have sufficient budget"
+        );
         require(
             IERC20(_token).balanceOf(_studentAddress) >= tutors[msg.sender].ratePerSecond * 10 minutes,
             "Student does not have sufficient balance"
         );
 
-        require(!sessions[msg.sender].isActive, "There should be no ongoing session for this tutor");
         // - Create new session
         sessions[msg.sender] = Session({
             student: _studentAddress,
