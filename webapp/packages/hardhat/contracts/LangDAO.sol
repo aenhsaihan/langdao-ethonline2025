@@ -16,6 +16,17 @@ import "hardhat/console.sol";
  *
  * @author LangDAO Team
  */
+interface IERC20 {
+    function transfer(address to, uint256 value) external returns (bool);
+
+    function transferFrom(address from, address to, uint256 value) external returns (bool);
+
+    function approve(address spender, uint256 value) external returns (bool);
+
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    function balanceOf(address who) external view returns (uint256);
+}
 
 contract LangDAO {
     // ============ ENUMS ============
@@ -61,7 +72,7 @@ contract LangDAO {
 
     // Mappings
     mapping(address => Tutor) public tutors;
-    mapping(uint256 => Session) public sessions;
+    mapping(address => Session) public sessions;
     mapping(address => uint256[]) public userSessions; // User's session IDs
     // mapping(string => address[]) public availableTutorsByLanguage; // Language -> available tutors
     mapping(address => mapping(uint256 => bool)) public isNative; // address -> associated language id -> true if native
@@ -69,7 +80,7 @@ contract LangDAO {
     // ============ EVENTS ============
 
     event TutorRegistered(address indexed user, uint256[] languages, uint256 ratePerHour);
-    event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, string language);
+    event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
     event SessionEnded(uint256 indexed sessionId, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
 
@@ -85,8 +96,8 @@ contract LangDAO {
         _;
     }
 
-    modifier onlyActiveSession(uint256 sessionId) {
-        require(sessions[sessionId].isActive, "Session not active");
+    modifier onlyActiveSession(address tutorAddress) {
+        require(sessions[tutorAddress].isActive, "Session not active");
         _;
     }
 
@@ -141,7 +152,7 @@ contract LangDAO {
 
     /**
      * Start a new session between student and tutor
-     * @param _tutorAddress Address of the tutor
+     * @param _studentAddress Address of the student
      * @param _language Language being taught/learned
      * @return sessionId The ID of the created session
      */
@@ -149,21 +160,47 @@ contract LangDAO {
     // here, the tutor has received an incoming call from the student
     // they've accepted the call which means we are starting a session
     // which means we need the student's address as well
-    function startSession(address _tutorAddress, uint256 _language) external onlyRegisteredTutors returns (uint256) {
+    function startSession(
+        address _studentAddress,
+        uint256 _language,
+        address _token
+    ) external onlyRegisteredTutors returns (uint256) {
         // TODO: Implement session start logic
         // - Validate tutor is available and registered
         // - Check if student has sufficient balance
+        require(
+            IERC20(_token).balanceOf(_studentAddress) >= tutors[msg.sender].ratePerSecond,
+            "Student does not have sufficient balance"
+        );
+
+        require(!sessions[msg.sender].isActive, "There should be no ongoing session for this tutor");
         // - Create new session
+        sessions[msg.sender] = Session({
+            student: _studentAddress,
+            tutor: msg.sender,
+            startTime: block.timestamp,
+            endTime: 0,
+            ratePerSecond: tutors[msg.sender].ratePerSecond,
+            totalPaid: 0,
+            status: SessionStatus.Active,
+            language: _language,
+            isActive: true
+        });
+
         // - Update user statuses to InSession
         // - Emit SessionStarted event
+        sessionCounter++;
+        emit SessionStarted(sessionCounter, _studentAddress, msg.sender, _language);
+
+        return sessionCounter;
         // - Return session ID
     }
 
     /**
      * End an active session
-     * @param _sessionId ID of the session to end
+     * @param tutorAddress Tutor address of the session to end
      */
-    function endSession(uint256 _sessionId) external onlyActiveSession(_sessionId) {
+    function endSession(address tutorAddress) external onlyActiveSession(tutorAddress) {
         // TODO: Implement session end logic
         // - Validate caller is student, tutor, or authorized service
         // - Calculate total payment based on duration
@@ -175,9 +212,9 @@ contract LangDAO {
 
     /**
      * Process per-second payment for active session
-     * @param _sessionId ID of the active session
+     * @param tutorAddress Tutor address of the active session
      */
-    function processPayment(uint256 _sessionId) external onlyActiveSession(_sessionId) {
+    function processPayment(address tutorAddress) external onlyActiveSession(tutorAddress) {
         // TODO: Implement per-second payment logic
         // - Calculate payment for current second
         // - Check student has sufficient balance
