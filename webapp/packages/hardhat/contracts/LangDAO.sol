@@ -58,9 +58,7 @@ contract LangDAO {
     // Mappings
     mapping(address => Tutor) public tutors;
     mapping(address => Session) public sessions;
-    mapping(address => uint256[]) public userSessions; // User's session IDs
-    // mapping(string => address[]) public availableTutorsByLanguage; // Language -> available tutors
-    mapping(address => mapping(uint256 => bool)) public isNative; // address -> associated language id -> true if native
+    // mapping(address => uint256[]) public userSessions; // User's session IDs
 
     // ============ EVENTS ============
 
@@ -104,10 +102,6 @@ contract LangDAO {
         tutors[msg.sender].isRegistered = true;
         tutors[msg.sender].ratePerSecond = _ratePerSecond;
         tutors[msg.sender].languages = _languages;
-
-        for (uint256 i = 0; i < _languages.length; i++) {
-            isNative[msg.sender][_languages[i]] = true;
-        }
 
         emit TutorRegistered(msg.sender, _languages, _ratePerSecond);
     }
