@@ -1,0 +1,23 @@
+{
+  "name": "heartbeat",
+  "version": "1.0.0",
+  "description": "Heartbeat service for tracking session participants and triggering automatic session stops",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["heartbeat", "webrtc", "blockchain", "session", "escrow"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
+    "express": "^5.1.0",
+    "socket.io": "^4.7.5",
+    "ws": "^8.18.0"
+  }
+}
