@@ -138,6 +138,14 @@ contract LangDAO {
     }
 
     /**
+     * Update student's budget
+     * @param _budgetPerSec Student budget per second
+     */
+    function updateBudget(uint256 _budgetPerSec) external onlyRegisteredStudents {
+        students[msg.sender].budgetPerSec = _budgetPerSec;
+    }
+
+    /**
      * Update user's rate
      * @param _ratePerSecond New rate per hour
      */
