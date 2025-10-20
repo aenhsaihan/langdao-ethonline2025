@@ -55,6 +55,12 @@ const deployedContracts = {
               type: "uint256",
             },
             {
+              indexed: true,
+              internalType: "address",
+              name: "tutorAddress",
+              type: "address",
+            },
+            {
               indexed: false,
               internalType: "uint256",
               name: "duration",
@@ -112,6 +118,31 @@ const deployedContracts = {
             },
             {
               indexed: false,
+              internalType: "uint256",
+              name: "targetLanguage",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "budgetPerSec",
+              type: "uint256",
+            },
+          ],
+          name: "StudentRegistered",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: false,
               internalType: "uint256[]",
               name: "languages",
               type: "uint256[]",
@@ -129,20 +160,65 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint256",
-              name: "_ratePerHour",
-              type: "uint256",
+              internalType: "address",
+              name: "tutorAddress",
+              type: "address",
             },
           ],
-          name: "convertToPerSecond",
+          name: "activeSessions",
           outputs: [
             {
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "tutor",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
               internalType: "uint256",
-              name: "",
+              name: "startTime",
               type: "uint256",
             },
+            {
+              internalType: "uint256",
+              name: "endTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "ratePerSecond",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalPaid",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "language",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "id",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isActive",
+              type: "bool",
+            },
           ],
-          stateMutability: "pure",
+          stateMutability: "view",
           type: "function",
         },
         {
@@ -169,25 +245,6 @@ const deployedContracts = {
           name: "endSession",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "string",
-              name: "_language",
-              type: "string",
-            },
-          ],
-          name: "getAvailableTutors",
-          outputs: [
-            {
-              internalType: "address[]",
-              name: "",
-              type: "address[]",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
         {
@@ -232,6 +289,11 @@ const deployedContracts = {
                   type: "address",
                 },
                 {
+                  internalType: "address",
+                  name: "token",
+                  type: "address",
+                },
+                {
                   internalType: "uint256",
                   name: "startTime",
                   type: "uint256",
@@ -252,13 +314,13 @@ const deployedContracts = {
                   type: "uint256",
                 },
                 {
-                  internalType: "enum LangDAO.SessionStatus",
-                  name: "status",
-                  type: "uint8",
+                  internalType: "uint256",
+                  name: "language",
+                  type: "uint256",
                 },
                 {
                   internalType: "uint256",
-                  name: "language",
+                  name: "id",
                   type: "uint256",
                 },
                 {
@@ -324,30 +386,6 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          name: "isNative",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "",
-              type: "bool",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
           inputs: [],
           name: "owner",
           outputs: [
@@ -363,12 +401,17 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "tutorAddress",
-              type: "address",
+              internalType: "uint256",
+              name: "_targetLanguage",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "_budgetPerSec",
+              type: "uint256",
             },
           ],
-          name: "processPayment",
+          name: "registerStudent",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -407,12 +450,12 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "",
-              type: "address",
+              internalType: "uint256",
+              name: "sessionId",
+              type: "uint256",
             },
           ],
-          name: "sessions",
+          name: "sessionHistory",
           outputs: [
             {
               internalType: "address",
@@ -422,6 +465,11 @@ const deployedContracts = {
             {
               internalType: "address",
               name: "tutor",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "token",
               type: "address",
             },
             {
@@ -445,13 +493,13 @@ const deployedContracts = {
               type: "uint256",
             },
             {
-              internalType: "enum LangDAO.SessionStatus",
-              name: "status",
-              type: "uint8",
+              internalType: "uint256",
+              name: "language",
+              type: "uint256",
             },
             {
               internalType: "uint256",
-              name: "language",
+              name: "id",
               type: "uint256",
             },
             {
@@ -467,7 +515,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "_studentAddress",
+              name: "_tutorAddress",
               type: "address",
             },
             {
@@ -493,13 +541,29 @@ const deployedContracts = {
           type: "function",
         },
         {
-          inputs: [],
-          name: "totalSessions",
+          inputs: [
+            {
+              internalType: "address",
+              name: "studentAddress",
+              type: "address",
+            },
+          ],
+          name: "students",
           outputs: [
             {
               internalType: "uint256",
-              name: "",
+              name: "targetLanguage",
               type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "budgetPerSec",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
             },
           ],
           stateMutability: "view",
@@ -509,17 +573,12 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "tutorAddress",
               type: "address",
             },
           ],
           name: "tutors",
           outputs: [
-            {
-              internalType: "uint256",
-              name: "ratePerSecond",
-              type: "uint256",
-            },
             {
               internalType: "uint256",
               name: "totalEarnings",
@@ -543,6 +602,11 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "_language",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
               name: "_ratePerSecond",
               type: "uint256",
             },
@@ -556,7 +620,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "userAddress",
               type: "address",
             },
             {
@@ -569,7 +633,7 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint256",
-              name: "",
+              name: "ids",
               type: "uint256",
             },
           ],

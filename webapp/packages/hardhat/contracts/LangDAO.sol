@@ -246,8 +246,7 @@ contract LangDAO {
      * @return Array of session IDs
      */
     function getUserSessions(address _userAddress) external view returns (uint256[] memory) {
-        // TODO: Implement session history lookup
-        // - Return all session IDs for the user
+        return userSessions[_userAddress];
     }
 
     /**
@@ -256,8 +255,7 @@ contract LangDAO {
      * @return Session struct with all details
      */
     function getSession(uint256 _sessionId) external view returns (Session memory) {
-        // TODO: Implement session details lookup
-        // - Return complete session information
+        return sessionHistory[_sessionId];
     }
 
     /**
@@ -266,9 +264,11 @@ contract LangDAO {
      * @return Current total cost in wei
      */
     function getCurrentSessionCost(uint256 _sessionId) external view returns (uint256) {
-        // TODO: Implement cost calculation
-        // - Calculate total cost based on duration and rate
-        // - Return current cost in wei
+        Session memory session = sessionHistory[_sessionId];
+        require(session.isActive, "Session is not active");
+
+        uint256 duration = block.timestamp - session.startTime;
+        return duration * session.ratePerSecond;
     }
 
     // ============ UTILITY FUNCTIONS ============
@@ -309,6 +309,29 @@ contract LangDAO {
     function withdraw() external onlyOwner {
         // TODO: Implement owner withdrawal
         // - Allow owner to withdraw any accumulated fees
+    }
+
+    /**
+     * Getter functions for tutor data
+     */
+    function getTutorLanguage(address _tutor, uint256 _language) external view returns (bool) {
+        return tutors[_tutor].languages[_language];
+    }
+
+    function getTutorRate(address _tutor, uint256 _language) external view returns (uint256) {
+        return tutors[_tutor].rateForLanguage[_language];
+    }
+
+    function getTutorInfo(
+        address _tutor
+    ) external view returns (uint256 totalEarnings, uint256 sessionCount, bool isRegistered) {
+        return (tutors[_tutor].totalEarnings, tutors[_tutor].sessionCount, tutors[_tutor].isRegistered);
+    }
+
+    function getStudentInfo(
+        address _student
+    ) external view returns (uint256 targetLanguage, uint256 budgetPerSec, bool isRegistered) {
+        return (students[_student].targetLanguage, students[_student].budgetPerSec, students[_student].isRegistered);
     }
 
     /**
