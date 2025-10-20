@@ -5,10 +5,9 @@ import { ThemeProvider } from "~~/components/ThemeProvider";
 import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
-
 export const metadata = getMetadata({
-  title: 'Scaffold-ETH 2 App',
-  description: 'Built with 🏗 Scaffold-ETH 2'
+  title: 'LangDAO - Learn, Teach, Earn',
+  description: 'Empowering people worldwide to use their language skills to learn, teach, and earn in Web3'
 });
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
