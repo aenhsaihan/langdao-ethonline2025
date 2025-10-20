@@ -164,10 +164,7 @@ contract LangDAO {
     ) external onlyRegisteredStudents returns (uint256) {
         require(!activeSessions[_tutorAddress].isActive, "There should be no ongoing session for this tutor");
         require(tutors[_tutorAddress].languages[_language], "Tutor does not offer this language");
-        require(
-            students[msg.sender].budgetPerSec >= tutors[_tutorAddress].rateForLanguage[_language],
-            "Student cannot afford tutor's rate for this language"
-        );
+        require(this.canAffordRate(msg.sender, _tutorAddress), "Student cannot afford tutor's rate for this language");
         require(
             this.hasSufficientBalance(msg.sender, _tutorAddress, _token),
             "Student does not have sufficient balance"
@@ -274,6 +271,18 @@ contract LangDAO {
     }
 
     // ============ UTILITY FUNCTIONS ============
+
+    /**
+     * Check if student can afford tutor's rate
+     * @param _studentAddress Address of the student
+     * @param _tutorAddress Address of the tutor
+     * @return True if student can afford tutor's rate
+     */
+    function canAffordRate(address _studentAddress, address _tutorAddress) external view returns (bool) {
+        uint256 language = students[_studentAddress].targetLanguage;
+        uint256 ratePerSecond = tutors[_tutorAddress].rateForLanguage[language];
+        return students[_studentAddress].budgetPerSec >= ratePerSecond;
+    }
 
     /**
      * Check if user has sufficient balance for session
