@@ -29,6 +29,8 @@ interface IERC20 {
 }
 
 contract LangDAO {
+    uint256 constant BUFFER_TIME = 10 minutes;
+
     // ============ STRUCTS ============
     struct Student {
         uint256 targetLanguage;
@@ -167,7 +169,7 @@ contract LangDAO {
             "Student cannot afford tutor's rate for this language"
         );
         require(
-            IERC20(_token).balanceOf(msg.sender) >= tutors[_tutorAddress].rateForLanguage[_language] * 10 minutes,
+            this.hasSufficientBalance(msg.sender, _tutorAddress, _token),
             "Student does not have sufficient balance"
         );
 
@@ -275,19 +277,17 @@ contract LangDAO {
 
     /**
      * Check if user has sufficient balance for session
-     * @param _userAddress Address of the user
-     * @param _estimatedDuration Estimated session duration in seconds
-     * @param _ratePerSecond Rate per second in wei
+     * @param _studentAddress Address of the user
      * @return True if user has sufficient balance
      */
     function hasSufficientBalance(
-        address _userAddress,
-        uint256 _estimatedDuration,
-        uint256 _ratePerSecond
+        address _studentAddress,
+        address _tutorAddress,
+        address _token
     ) external view returns (bool) {
-        // TODO: Implement balance check
-        // - Check if user's ETH balance is sufficient
-        // - Consider estimated session cost
+        uint256 language = students[_studentAddress].targetLanguage;
+        uint256 ratePerSecond = tutors[_tutorAddress].rateForLanguage[language];
+        return IERC20(_token).balanceOf(_studentAddress) >= ratePerSecond * BUFFER_TIME;
     }
 
     // ============ ADMIN FUNCTIONS ============
