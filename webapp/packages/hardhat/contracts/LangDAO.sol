@@ -38,7 +38,6 @@ contract LangDAO {
     struct Tutor {
         mapping(uint256 language => bool) languages;
         mapping(uint256 language => uint256 ratePerSecond) rateForLanguage;
-        // uint256 ratePerSecond; // Rate in wei per second
         uint256 totalEarnings; // Total earnings as tutor
         uint256 sessionCount; // Total sessions participated in
         bool isRegistered;
@@ -60,7 +59,6 @@ contract LangDAO {
     // ============ STATE VARIABLES ============
     address public immutable owner;
     uint256 public sessionCounter;
-    uint256 public totalSessions;
 
     // Mappings
     mapping(address studentAddress => Student) public students;
@@ -76,12 +74,16 @@ contract LangDAO {
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
     event SessionEnded(uint256 indexed sessionId, address indexed tutorAddress, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
-    event AvailabilityUpdated(address indexed user, uint256 targetLanguage, uint256 budgetPerSec);
 
     // ============ MODIFIERS ============
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not the owner");
+        _;
+    }
+
+    modifier onlyRegisteredStudents() {
+        require(students[msg.sender].isRegistered, "User not registered");
         _;
     }
 
@@ -124,8 +126,6 @@ contract LangDAO {
     function registerTutor(uint256[] memory _languages, uint256 _ratePerSecond) external {
         require(!tutors[msg.sender].isRegistered, "Tutor already registered");
         tutors[msg.sender].isRegistered = true;
-        // tutors[msg.sender].ratePerSecond = _ratePerSecond;
-        // tutors[msg.sender].languages = _languages;
 
         for (uint256 i = 0; i < _languages.length; i++) {
             tutors[msg.sender].languages[_languages[i]] = true;
@@ -148,24 +148,26 @@ contract LangDAO {
 
     /**
      * Start a new session between student and tutor
-     * @param tutorAddress Address of the tutor
+     * @notice The student has accepted the call from the tutor and the session is starting
+     * @dev The student is submitting a transaction to accept the call from the tutor to start the session
+     * @param _tutorAddress Address of the tutor
      * @param _language Language being taught/learned
+     * @param _token Token being used for payment
      * @return sessionId The ID of the created session
      */
-
-    // here, the tutor has received an incoming call from the student
-    // they've accepted the call which means we are starting a session
-    // which means we need the student's address as well
-    function startSession(address tutorAddress, uint256 _language, address _token) external returns (uint256) {
-        require(students[msg.sender].isRegistered, "Student is not registered");
-        require(!activeSessions[tutorAddress].isActive, "There should be no ongoing session for this tutor");
-        require(tutors[tutorAddress].languages[_language], "Tutor does not offer this language");
+    function startSession(
+        address _tutorAddress,
+        uint256 _language,
+        address _token
+    ) external onlyRegisteredStudents returns (uint256) {
+        require(!activeSessions[_tutorAddress].isActive, "There should be no ongoing session for this tutor");
+        require(tutors[_tutorAddress].languages[_language], "Tutor does not offer this language");
         require(
-            students[msg.sender].budgetPerSec >= tutors[tutorAddress].rateForLanguage[_language],
+            students[msg.sender].budgetPerSec >= tutors[_tutorAddress].rateForLanguage[_language],
             "Student cannot afford tutor's rate for this language"
         );
         require(
-            IERC20(_token).balanceOf(msg.sender) >= tutors[tutorAddress].rateForLanguage[_language] * 10 minutes,
+            IERC20(_token).balanceOf(msg.sender) >= tutors[_tutorAddress].rateForLanguage[_language] * 10 minutes,
             "Student does not have sufficient balance"
         );
 
@@ -173,35 +175,34 @@ contract LangDAO {
         sessionCounter++;
         Session memory session = Session({
             student: msg.sender,
-            tutor: tutorAddress,
+            tutor: _tutorAddress,
             token: _token,
             startTime: block.timestamp,
             endTime: 0,
-            ratePerSecond: tutors[tutorAddress].rateForLanguage[_language],
+            ratePerSecond: tutors[_tutorAddress].rateForLanguage[_language],
             totalPaid: 0,
             language: _language,
             id: sessionCounter,
             isActive: true
         });
-        activeSessions[tutorAddress] = session;
+        activeSessions[_tutorAddress] = session;
 
         sessionHistory[session.id] = session;
         userSessions[msg.sender].push(session.id);
-        userSessions[tutorAddress].push(session.id);
+        userSessions[_tutorAddress].push(session.id);
 
         // - Emit SessionStarted event
-        emit SessionStarted(session.id, msg.sender, tutorAddress, _language);
+        emit SessionStarted(session.id, msg.sender, _tutorAddress, _language);
 
         return session.id;
     }
 
     /**
      * End an active session
+     * @notice The session will be ended by the student or tutor hanging up the call or the owner ending the session
+     * @dev The backend will end the call if heartbeat signal is not received possibly due to disconnection from the call
      * @param tutorAddress Tutor address of the session to end
      */
-
-    // here the student or tutor has hung up the call
-    // or student/tutor were disconnected, and our system has ended the session
     function endSession(address tutorAddress) external onlyActiveSession(tutorAddress) {
         // - Validate caller is student, tutor, or authorized service
         require(
