@@ -66,6 +66,7 @@ contract LangDAO {
     mapping(address student => mapping(address token => uint256 balance)) public studentBalances;
     mapping(address student => Student) public students;
     mapping(address tutor => Tutor) public tutors;
+    mapping(address student => bool) public isStudying;
     mapping(address tutor => Session) public activeSessions;
     mapping(uint256 sessionId => Session) public sessionHistory;
     mapping(address user => uint256[] ids) public userSessions; // User's session IDs
@@ -175,6 +176,7 @@ contract LangDAO {
      * @param _amount Amount of tokens to withdraw
      */
     function withdrawFunds(address _token, uint256 _amount) external onlyRegisteredStudents {
+        require(!isStudying[msg.sender], "Student is studying");
         require(studentBalances[msg.sender][_token] >= _amount, "Insufficient balance");
         IERC20(_token).transfer(msg.sender, _amount);
         studentBalances[msg.sender][_token] -= _amount;
@@ -220,6 +222,7 @@ contract LangDAO {
             isActive: true
         });
         activeSessions[_tutorAddress] = session;
+        isStudying[msg.sender] = true;
 
         sessionHistory[session.id] = session;
         userSessions[msg.sender].push(session.id);
@@ -275,6 +278,8 @@ contract LangDAO {
 
         emit SessionEnded(session.id, session.tutor, duration, totalPayment);
 
+        // Reset student studying status before deleting session
+        isStudying[session.student] = false;
         delete activeSessions[tutorAddress];
     }
 
