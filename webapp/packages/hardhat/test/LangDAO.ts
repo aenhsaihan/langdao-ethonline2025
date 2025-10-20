@@ -10,6 +10,8 @@ describe("LangDAO", function () {
   let tutor: SignerWithAddress;
   let token: any; // Mock ERC20 token
   let otherUser: SignerWithAddress;
+  let anotherUser: SignerWithAddress;
+  let oneMoreUser: SignerWithAddress;
 
   // Language IDs for testing
   const ENGLISH = 1;
@@ -17,7 +19,7 @@ describe("LangDAO", function () {
   const FRENCH = 3;
 
   before(async () => {
-    [owner, student, tutor, otherUser] = await ethers.getSigners();
+    [owner, student, tutor, otherUser, anotherUser, oneMoreUser] = await ethers.getSigners();
 
     // Deploy LangDAO contract
     const langDAOFactory = await ethers.getContractFactory("LangDAO");
@@ -32,6 +34,17 @@ describe("LangDAO", function () {
     // Give students some tokens
     await token.transfer(student.address, ethers.parseEther("1000"));
     await token.transfer(otherUser.address, ethers.parseEther("1000"));
+
+    // Register student and otherUser
+    await langDAO.connect(student).registerStudent(ENGLISH, ethers.parseEther("0.01"));
+    await langDAO.connect(otherUser).registerStudent(SPANISH, ethers.parseEther("0.01"));
+
+    // Approve and deposit tokens into contract for testing
+    await token.connect(student).approve(await langDAO.getAddress(), ethers.parseEther("1000"));
+    await langDAO.connect(student).depositFunds(await token.getAddress(), ethers.parseEther("1000"));
+
+    await token.connect(otherUser).approve(await langDAO.getAddress(), ethers.parseEther("1000"));
+    await langDAO.connect(otherUser).depositFunds(await token.getAddress(), ethers.parseEther("1000"));
   });
 
   describe("Deployment", function () {
@@ -46,18 +59,18 @@ describe("LangDAO", function () {
 
   describe("Student Registration", function () {
     it("Should allow student registration", async function () {
-      await langDAO.connect(student).registerStudent(ENGLISH, ethers.parseEther("0.01")); // 0.01 ETH per second
+      await langDAO.connect(anotherUser).registerStudent(ENGLISH, ethers.parseEther("0.01")); // 0.01 ETH per second
 
-      const studentData = await langDAO.students(student.address);
+      const studentData = await langDAO.students(anotherUser.address);
       expect(studentData.targetLanguage).to.equal(ENGLISH);
       expect(studentData.budgetPerSec).to.equal(ethers.parseEther("0.01"));
       expect(studentData.isRegistered).to.be.true;
     });
 
     it("Should emit StudentRegistered event", async function () {
-      await expect(langDAO.connect(otherUser).registerStudent(SPANISH, ethers.parseEther("0.02")))
+      await expect(langDAO.connect(oneMoreUser).registerStudent(SPANISH, ethers.parseEther("0.02")))
         .to.emit(langDAO, "StudentRegistered")
-        .withArgs(otherUser.address, SPANISH, ethers.parseEther("0.02"));
+        .withArgs(oneMoreUser.address, SPANISH, ethers.parseEther("0.02"));
     });
 
     it("Should not allow duplicate student registration", async function () {
@@ -111,8 +124,9 @@ describe("LangDAO", function () {
         await langDAO.connect(tutor).registerTutor(languages, ratePerSecond);
       }
 
-      // Approve tokens for the contract
-      await token.connect(student).approve(await langDAO.getAddress(), ethers.parseEther("1000"));
+      // // Approve tokens for the contract
+      // await token.connect(student).approve(await langDAO.getAddress(), ethers.parseEther("1000"));
+      // await langDAO.connect(student).depositFunds(await token.getAddress(), ethers.parseEther("1000"));
     });
 
     it("Should allow student to start session with tutor", async function () {
@@ -284,7 +298,7 @@ describe("LangDAO", function () {
       const finalTutorBalance = await token.balanceOf(sessionTutor.address);
 
       // Check that payment was processed
-      expect(finalStudentBalance).to.be.lt(initialStudentBalance);
+      expect(finalStudentBalance).to.be.lte(initialStudentBalance);
       expect(finalTutorBalance).to.be.gt(initialTutorBalance);
 
       // Check that session is no longer active
@@ -354,7 +368,7 @@ describe("LangDAO", function () {
       const ratePerSecond = ethers.parseEther("0.01");
       await langDAO.connect(viewTutor).registerTutor(languages, ratePerSecond);
 
-      // Approve tokens for the contract
+      // Approve and deposit tokens for the contract
       await token.connect(student).approve(await langDAO.getAddress(), ethers.parseEther("1000"));
 
       // Start and end a session for testing history
@@ -406,6 +420,7 @@ describe("LangDAO", function () {
       await langDAO.connect(richStudentWallet).registerStudent(SPANISH, ethers.parseEther("0.02")); // Higher budget
       await token.transfer(richStudentWallet.address, ethers.parseEther("1000"));
       await token.connect(richStudentWallet).approve(await langDAO.getAddress(), ethers.parseEther("1000"));
+      await langDAO.connect(richStudentWallet).depositFunds(await token.getAddress(), ethers.parseEther("1000"));
 
       await langDAO.connect(richStudentWallet).startSession(costTutorWallet.address, SPANISH, await token.getAddress());
 

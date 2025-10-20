@@ -63,11 +63,12 @@ contract LangDAO {
     uint256 public sessionCounter;
 
     // Mappings
-    mapping(address studentAddress => Student) public students;
-    mapping(address tutorAddress => Tutor) public tutors;
-    mapping(address tutorAddress => Session) public activeSessions;
+    mapping(address student => mapping(address token => uint256 balance)) public studentBalances;
+    mapping(address student => Student) public students;
+    mapping(address tutor => Tutor) public tutors;
+    mapping(address tutor => Session) public activeSessions;
     mapping(uint256 sessionId => Session) public sessionHistory;
-    mapping(address userAddress => uint256[] ids) public userSessions; // User's session IDs
+    mapping(address user => uint256[] ids) public userSessions; // User's session IDs
 
     // ============ EVENTS ============
 
@@ -76,6 +77,8 @@ contract LangDAO {
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
     event SessionEnded(uint256 indexed sessionId, address indexed tutorAddress, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
+    event FundsDeposited(address indexed user, address indexed token, uint256 amount);
+    event FundsWithdrawn(address indexed user, address indexed token, uint256 amount);
 
     // ============ MODIFIERS ============
 
@@ -154,6 +157,30 @@ contract LangDAO {
         tutors[msg.sender].rateForLanguage[_language] = _ratePerSecond;
     }
 
+    // ============ FUNDS MANAGEMENT ============
+    /**
+     * Deposit funds into the contract
+     * @param _token Token being deposited
+     * @param _amount Amount of tokens to deposit
+     */
+    function depositFunds(address _token, uint256 _amount) external onlyRegisteredStudents {
+        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        studentBalances[msg.sender][_token] += _amount;
+        emit FundsDeposited(msg.sender, _token, _amount);
+    }
+
+    /**
+     * Withdraw funds from the contract
+     * @param _token Token being withdrawn
+     * @param _amount Amount of tokens to withdraw
+     */
+    function withdrawFunds(address _token, uint256 _amount) external onlyRegisteredStudents {
+        require(studentBalances[msg.sender][_token] >= _amount, "Insufficient balance");
+        IERC20(_token).transfer(msg.sender, _amount);
+        studentBalances[msg.sender][_token] -= _amount;
+        emit FundsWithdrawn(msg.sender, _token, _amount);
+    }
+
     // ============ SESSION MANAGEMENT ============
 
     /**
@@ -225,8 +252,14 @@ contract LangDAO {
         uint256 duration = block.timestamp - session.startTime;
         uint256 totalPayment = duration * session.ratePerSecond;
 
-        // - Process payment from student to tutor
-        IERC20(session.token).transferFrom(session.student, session.tutor, totalPayment);
+        // // - Process payment from student to tutor
+        // IERC20(session.token).transferFrom(session.student, session.tutor, totalPayment);
+
+        // Deduct from user's contract balance
+        studentBalances[session.student][session.token] -= totalPayment;
+
+        // Transfer from contract to tutor (guaranteed success)
+        IERC20(session.token).transfer(session.tutor, totalPayment);
 
         // - Update session status and end time
         session.totalPaid += totalPayment;
@@ -304,7 +337,7 @@ contract LangDAO {
     ) external view returns (bool) {
         uint256 language = students[_studentAddress].targetLanguage;
         uint256 ratePerSecond = tutors[_tutorAddress].rateForLanguage[language];
-        return IERC20(_token).balanceOf(_studentAddress) >= ratePerSecond * BUFFER_TIME;
+        return studentBalances[_studentAddress][_token] >= ratePerSecond * BUFFER_TIME;
     }
 
     // ============ ADMIN FUNCTIONS ============
