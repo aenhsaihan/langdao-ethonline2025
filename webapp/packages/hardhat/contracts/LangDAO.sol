@@ -52,6 +52,7 @@ contract LangDAO {
         uint256 ratePerSecond;
         uint256 totalPaid;
         uint256 language; // Language being taught/learned
+        uint256 id;
         bool isActive;
     }
 
@@ -61,16 +62,17 @@ contract LangDAO {
     uint256 public totalSessions;
 
     // Mappings
-    mapping(address => Student) public activeStudents;
-    mapping(address => Tutor) public tutors;
-    mapping(address => Session) public sessions;
-    // mapping(address => uint256[]) public userSessions; // User's session IDs
+    mapping(address studentAddress => Student) public activeStudents;
+    mapping(address tutorAddress => Tutor) public tutors;
+    mapping(address tutorAddress => Session) public activeSessions;
+    mapping(uint256 sessionId => Session) public sessionHistory;
+    mapping(address userAddress => uint256[] ids) public userSessions; // User's session IDs
 
     // ============ EVENTS ============
 
     event TutorRegistered(address indexed user, uint256[] languages, uint256 ratePerHour);
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
-    event SessionEnded(address indexed tutorAddress, uint256 duration, uint256 totalPaid);
+    event SessionEnded(uint256 indexed sessionId, address indexed tutorAddress, uint256 duration, uint256 totalPaid);
     event PaymentProcessed(address indexed from, address indexed to, uint256 amount);
     event AvailabilityUpdated(address indexed user, uint256 targetLanguage, uint256 budgetPerSec);
 
@@ -87,7 +89,7 @@ contract LangDAO {
     }
 
     modifier onlyActiveSession(address tutorAddress) {
-        require(sessions[tutorAddress].isActive, "Session not active");
+        require(activeSessions[tutorAddress].isActive, "Session not active");
         _;
     }
 
@@ -115,6 +117,9 @@ contract LangDAO {
 
     /**
      * Update user availability status
+     * @param _targetLanguage Target language the student wants to learn
+     * @param _budgetPerSec Budget per second the student is willing to spend
+     * @param _isActive Whether the student is looking for a tutor
      */
     function updateAvailability(uint256 _targetLanguage, uint256 _budgetPerSec, bool _isActive) external {
         // TODO: Implement availability update logic
@@ -164,7 +169,7 @@ contract LangDAO {
         // - Validate tutor is available and registered
         // - Check if student has sufficient balance
         // uint256 buffer = 10 minutes;
-        require(!sessions[msg.sender].isActive, "There should be no ongoing session for this tutor");
+        require(!activeSessions[msg.sender].isActive, "There should be no ongoing session for this tutor");
         require(activeStudents[_studentAddress].isActive, "Student is not active");
         require(
             activeStudents[_studentAddress].targetLanguage == _language,
@@ -180,7 +185,8 @@ contract LangDAO {
         );
 
         // - Create new session
-        sessions[msg.sender] = Session({
+        sessionCounter++;
+        Session memory session = Session({
             student: _studentAddress,
             tutor: msg.sender,
             token: _token,
@@ -189,15 +195,19 @@ contract LangDAO {
             ratePerSecond: tutors[msg.sender].ratePerSecond,
             totalPaid: 0,
             language: _language,
+            id: sessionCounter,
             isActive: true
         });
+        activeSessions[msg.sender] = session;
+
+        sessionHistory[session.id] = session;
+        userSessions[_studentAddress].push(session.id);
+        userSessions[msg.sender].push(session.id);
 
         // - Emit SessionStarted event
-        sessionCounter++;
-        emit SessionStarted(sessionCounter, _studentAddress, msg.sender, _language);
+        emit SessionStarted(session.id, _studentAddress, msg.sender, _language);
 
-        return sessionCounter;
-        // - Return session ID
+        return session.id;
     }
 
     /**
@@ -210,32 +220,36 @@ contract LangDAO {
     function endSession(address tutorAddress) external onlyActiveSession(tutorAddress) {
         // - Validate caller is student, tutor, or authorized service
         require(
-            msg.sender == sessions[tutorAddress].student ||
-                msg.sender == sessions[tutorAddress].tutor ||
+            msg.sender == activeSessions[tutorAddress].student ||
+                msg.sender == activeSessions[tutorAddress].tutor ||
                 msg.sender == owner,
             "Caller is not the student, tutor nor owner"
         );
 
-        Session storage session = sessions[tutorAddress];
+        Session storage session = activeSessions[tutorAddress];
+
         // - Calculate total payment based on duration
         uint256 duration = block.timestamp - session.startTime;
         uint256 totalPayment = duration * session.ratePerSecond;
+
         // - Process payment from student to tutor
         IERC20(session.token).transferFrom(session.student, session.tutor, totalPayment);
+
         // - Update session status and end time
         session.totalPaid += totalPayment;
-
-        // - Update user statistics
         session.endTime = block.timestamp;
 
+        // - Update user statistics
         Tutor storage tutor = tutors[session.tutor];
         tutor.totalEarnings += totalPayment;
         tutor.sessionCount++;
 
-        // - Emit SessionEnded event
-        emit SessionEnded(session.tutor, duration, totalPayment);
+        // - Update session history
+        sessionHistory[session.id] = session;
 
-        delete sessions[tutorAddress];
+        emit SessionEnded(session.id, session.tutor, duration, totalPayment);
+
+        delete activeSessions[tutorAddress];
     }
 
     // ============ VIEW FUNCTIONS ============
