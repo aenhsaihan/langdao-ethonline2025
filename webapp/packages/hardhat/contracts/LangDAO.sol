@@ -139,10 +139,9 @@ contract LangDAO {
      * Update user's rate
      * @param _ratePerSecond New rate per hour
      */
-    function updateRate(uint256 _ratePerSecond) external onlyRegisteredTutors {
-        // TODO: Implement rate update logic
-        // - Convert ratePerHour to ratePerSecond
-        // - Update user's rate
+    function updateRate(uint256 _language, uint256 _ratePerSecond) external onlyRegisteredTutors {
+        require(tutors[msg.sender].languages[_language], "Tutor does not offer this language");
+        tutors[msg.sender].rateForLanguage[_language] = _ratePerSecond;
     }
 
     // ============ SESSION MANAGEMENT ============
