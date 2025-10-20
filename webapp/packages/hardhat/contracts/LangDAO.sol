@@ -33,11 +33,12 @@ contract LangDAO {
     struct Student {
         uint256 targetLanguage;
         uint256 budgetPerSec;
-        bool isActive;
+        bool isRegistered;
     }
     struct Tutor {
-        uint256[] languages; // Languages they can teach/learn TODO: might not need this
-        uint256 ratePerSecond; // Rate in wei per second
+        mapping(uint256 language => bool) languages;
+        mapping(uint256 language => uint256 ratePerSecond) rateForLanguage;
+        // uint256 ratePerSecond; // Rate in wei per second
         uint256 totalEarnings; // Total earnings as tutor
         uint256 sessionCount; // Total sessions participated in
         bool isRegistered;
@@ -62,7 +63,7 @@ contract LangDAO {
     uint256 public totalSessions;
 
     // Mappings
-    mapping(address studentAddress => Student) public activeStudents;
+    mapping(address studentAddress => Student) public students;
     mapping(address tutorAddress => Tutor) public tutors;
     mapping(address tutorAddress => Session) public activeSessions;
     mapping(uint256 sessionId => Session) public sessionHistory;
@@ -70,6 +71,7 @@ contract LangDAO {
 
     // ============ EVENTS ============
 
+    event StudentRegistered(address indexed user, uint256 targetLanguage, uint256 budgetPerSec);
     event TutorRegistered(address indexed user, uint256[] languages, uint256 ratePerHour);
     event SessionStarted(uint256 indexed sessionId, address indexed student, address indexed tutor, uint256 language);
     event SessionEnded(uint256 indexed sessionId, address indexed tutorAddress, uint256 duration, uint256 totalPaid);
@@ -101,7 +103,20 @@ contract LangDAO {
     // ============ USER MANAGEMENT ============
 
     /**
-     * Register a new user (student, tutor, or both)
+     * Register a new student
+     * @param _targetLanguage Target language the student wants to learn
+     * @param _budgetPerSec Budget per second the student is willing to spend
+     */
+    function registerStudent(uint256 _targetLanguage, uint256 _budgetPerSec) external {
+        require(!students[msg.sender].isRegistered, "Student already registered");
+        students[msg.sender].isRegistered = true;
+        students[msg.sender].targetLanguage = _targetLanguage;
+        students[msg.sender].budgetPerSec = _budgetPerSec;
+        emit StudentRegistered(msg.sender, _targetLanguage, _budgetPerSec);
+    }
+
+    /**
+     * Register a tutor
      * @param _languages Array of languages the user can teach/learn
      * @param _ratePerSecond Rate per hour (will be converted to per-second internally)
      */
@@ -109,33 +124,15 @@ contract LangDAO {
     function registerTutor(uint256[] memory _languages, uint256 _ratePerSecond) external {
         require(!tutors[msg.sender].isRegistered, "Tutor already registered");
         tutors[msg.sender].isRegistered = true;
-        tutors[msg.sender].ratePerSecond = _ratePerSecond;
-        tutors[msg.sender].languages = _languages;
+        // tutors[msg.sender].ratePerSecond = _ratePerSecond;
+        // tutors[msg.sender].languages = _languages;
+
+        for (uint256 i = 0; i < _languages.length; i++) {
+            tutors[msg.sender].languages[_languages[i]] = true;
+            tutors[msg.sender].rateForLanguage[_languages[i]] = _ratePerSecond;
+        }
 
         emit TutorRegistered(msg.sender, _languages, _ratePerSecond);
-    }
-
-    /**
-     * Update user availability status
-     * @param _targetLanguage Target language the student wants to learn
-     * @param _budgetPerSec Budget per second the student is willing to spend
-     * @param _isActive Whether the student is looking for a tutor
-     */
-    function updateAvailability(uint256 _targetLanguage, uint256 _budgetPerSec, bool _isActive) external {
-        // TODO: Implement availability update logic
-        // - Update user status
-        // - Add/remove from available tutors list if they're a tutor
-        // - Emit AvailabilityUpdated event
-
-        if (_isActive) {
-            activeStudents[msg.sender].isActive = true;
-            activeStudents[msg.sender].targetLanguage = _targetLanguage;
-            activeStudents[msg.sender].budgetPerSec = _budgetPerSec;
-            emit AvailabilityUpdated(msg.sender, _targetLanguage, _budgetPerSec);
-        } else {
-            delete activeStudents[msg.sender];
-            emit AvailabilityUpdated(msg.sender, 0, 0);
-        }
     }
 
     /**
@@ -152,7 +149,7 @@ contract LangDAO {
 
     /**
      * Start a new session between student and tutor
-     * @param _studentAddress Address of the student
+     * @param tutorAddress Address of the tutor
      * @param _language Language being taught/learned
      * @return sessionId The ID of the created session
      */
@@ -160,52 +157,41 @@ contract LangDAO {
     // here, the tutor has received an incoming call from the student
     // they've accepted the call which means we are starting a session
     // which means we need the student's address as well
-    function startSession(
-        address _studentAddress,
-        uint256 _language,
-        address _token
-    ) external onlyRegisteredTutors returns (uint256) {
-        // TODO: Implement session start logic
-        // - Validate tutor is available and registered
-        // - Check if student has sufficient balance
-        // uint256 buffer = 10 minutes;
-        require(!activeSessions[msg.sender].isActive, "There should be no ongoing session for this tutor");
-        require(activeStudents[_studentAddress].isActive, "Student is not active");
+    function startSession(address tutorAddress, uint256 _language, address _token) external returns (uint256) {
+        require(students[msg.sender].isRegistered, "Student is not registered");
+        require(!activeSessions[tutorAddress].isActive, "There should be no ongoing session for this tutor");
+        require(tutors[tutorAddress].languages[_language], "Tutor does not offer this language");
         require(
-            activeStudents[_studentAddress].targetLanguage == _language,
-            "Student does not have the target language"
+            students[msg.sender].budgetPerSec >= tutors[tutorAddress].rateForLanguage[_language],
+            "Student cannot afford tutor's rate for this language"
         );
         require(
-            activeStudents[_studentAddress].budgetPerSec >= tutors[msg.sender].ratePerSecond,
-            "Student does not have sufficient budget"
-        );
-        require(
-            IERC20(_token).balanceOf(_studentAddress) >= tutors[msg.sender].ratePerSecond * 10 minutes,
+            IERC20(_token).balanceOf(msg.sender) >= tutors[tutorAddress].rateForLanguage[_language] * 10 minutes,
             "Student does not have sufficient balance"
         );
 
         // - Create new session
         sessionCounter++;
         Session memory session = Session({
-            student: _studentAddress,
-            tutor: msg.sender,
+            student: msg.sender,
+            tutor: tutorAddress,
             token: _token,
             startTime: block.timestamp,
             endTime: 0,
-            ratePerSecond: tutors[msg.sender].ratePerSecond,
+            ratePerSecond: tutors[tutorAddress].rateForLanguage[_language],
             totalPaid: 0,
             language: _language,
             id: sessionCounter,
             isActive: true
         });
-        activeSessions[msg.sender] = session;
+        activeSessions[tutorAddress] = session;
 
         sessionHistory[session.id] = session;
-        userSessions[_studentAddress].push(session.id);
         userSessions[msg.sender].push(session.id);
+        userSessions[tutorAddress].push(session.id);
 
         // - Emit SessionStarted event
-        emit SessionStarted(session.id, _studentAddress, msg.sender, _language);
+        emit SessionStarted(session.id, msg.sender, tutorAddress, _language);
 
         return session.id;
     }
