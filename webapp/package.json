@@ -51,13 +51,19 @@
   },
   "devDependencies": {
     "husky": "~9.1.6",
-    "lint-staged": "~13.2.2"
+    "lint-staged": "~13.2.2",
+    "shadcn": "^3.4.2"
   },
   "packageManager": "yarn@3.2.3",
   "engines": {
     "node": ">=20.18.3"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "cobe": "^0.6.5",
+    "framer-motion": "^12.23.24",
+    "motion": "^12.23.24",
+    "tailwind-merge": "^3.3.1",
     "thirdweb": "^5.109.0"
   }
 }
