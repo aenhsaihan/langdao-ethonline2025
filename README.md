@@ -50,6 +50,49 @@ Millions have skills but no clear path to earn in Web3. Learning is scattered, i
 - **Biz viability:** revenue & sustainability.
 - **Launch strategy:** partnerships, community seeding (LatAm).
 
+## Development Setup
+
+### Prerequisites
+
+- Node.js (use version specified in `.nvmrc`)
+- nvm (Node Version Manager)
+
+### Getting Started
+
+1. Clone the repository
+2. Install the correct Node.js version:
+   ```bash
+   nvm use
+   ```
+3. Install dependencies:
+   ```bash
+   cd webapp
+   npm install --legacy-peer-deps
+   ```
+4. Start the development environment:
+
+   ```bash
+   # Terminal 1: Start local blockchain
+   cd webapp/packages/hardhat
+   npm run chain
+
+   # Terminal 2: Deploy to local blockchain
+   cd webapp/packages/hardhat
+   npm run deploy
+
+   # Terminal 3: Start frontend
+   cd webapp/packages/nextjs
+   npm run dev
+   ```
+
+   **Note**: If you encounter SSL certificate issues with Yarn, the project is configured to work with npm instead.
+
+### Project Structure
+
+- `webapp/` - Scaffold-ETH 2 dApp (Next.js + Hardhat)
+- `docs/` - Project documentation (MkDocs)
+- `contracts/` - (Available for additional contracts if needed)
+
 ## Links
 
 - Onboarding video notes: `docs/product/overview.md`
