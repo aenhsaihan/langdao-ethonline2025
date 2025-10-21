@@ -253,10 +253,11 @@ contract LangDAO {
 
         // - Calculate total payment based on duration
         uint256 duration = block.timestamp - session.startTime;
-        uint256 totalPayment = duration * session.ratePerSecond;
+        uint256 calculatedPayment = duration * session.ratePerSecond;
 
-        // // - Process payment from student to tutor
-        // IERC20(session.token).transferFrom(session.student, session.tutor, totalPayment);
+        // - Cap payment at student's available balance to prevent reverts
+        uint256 availableBalance = studentBalances[session.student][session.token];
+        uint256 totalPayment = calculatedPayment > availableBalance ? availableBalance : calculatedPayment;
 
         // Deduct from user's contract balance
         studentBalances[session.student][session.token] -= totalPayment;

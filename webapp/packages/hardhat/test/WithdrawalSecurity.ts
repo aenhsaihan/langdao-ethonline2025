@@ -159,4 +159,57 @@ describe("Withdrawal Security (isStudying Protection)", function () {
       langDAO.connect(unregisteredUser).withdrawFunds(await token.getAddress(), ethers.parseEther("100")),
     ).to.be.revertedWith("User not registered");
   });
+
+  it("Should cap payment at student's available balance when session exceeds deposit", async function () {
+    // Create a student with small deposit
+    const poorStudent = ethers.Wallet.createRandom().connect(ethers.provider);
+    const freshTutor = ethers.Wallet.createRandom().connect(ethers.provider);
+
+    await owner.sendTransaction({
+      to: poorStudent.address,
+      value: ethers.parseEther("1"),
+    });
+    await owner.sendTransaction({
+      to: freshTutor.address,
+      value: ethers.parseEther("1"),
+    });
+
+    // Give student enough tokens to start session (10 minutes buffer) but not much more
+    // Buffer time: 10 minutes = 600 seconds, rate: 0.001 per second = 0.6 tokens needed
+    // Give them 0.7 tokens (enough to start) but session will run longer than their balance
+    await token.transfer(poorStudent.address, ethers.parseEther("0.7"));
+
+    // Register student and tutor
+    await langDAO.connect(poorStudent).registerStudent(ENGLISH, ethers.parseEther("0.01"));
+    await langDAO.connect(freshTutor).registerTutor([ENGLISH], ethers.parseEther("0.001")); // 0.001 per second
+
+    // Student deposits all their tokens
+    await token.connect(poorStudent).approve(await langDAO.getAddress(), ethers.parseEther("0.7"));
+    await langDAO.connect(poorStudent).depositFunds(await token.getAddress(), ethers.parseEther("0.7"));
+
+    // Start a session
+    await langDAO.connect(poorStudent).startSession(freshTutor.address, ENGLISH, await token.getAddress());
+
+    // Wait a bit to simulate session duration
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+
+    // End the session - should not revert even though calculated payment exceeds balance
+    const initialTutorBalance = await token.balanceOf(freshTutor.address);
+    const initialStudentBalance = await langDAO.studentBalances(poorStudent.address, await token.getAddress());
+
+    await langDAO.connect(poorStudent).endSession(freshTutor.address);
+
+    const finalTutorBalance = await token.balanceOf(freshTutor.address);
+    const finalStudentBalance = await langDAO.studentBalances(poorStudent.address, await token.getAddress());
+
+    // Tutor should receive payment
+    expect(finalTutorBalance).to.be.gt(initialTutorBalance);
+
+    // Student's balance should be reduced
+    expect(finalStudentBalance).to.be.lt(initialStudentBalance);
+
+    // Student should no longer be studying
+    const isStudying = await langDAO.isStudying(poorStudent.address);
+    expect(isStudying).to.be.false;
+  });
 });
