@@ -7,6 +7,7 @@ import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
 import { ConnectButton, useActiveAccount } from "thirdweb/react";
 import { client } from "../client";
 import { wallets } from "../wallets";
+import { activeChain } from "../lib/chains";
 import { SwitchTheme } from "./SwitchTheme";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
 import { usePageView } from "~~/hooks/usePageView";
@@ -28,6 +29,10 @@ const connectedMenuLinks: HeaderMenuLink[] = [
   {
     label: 'Schedule',
     href: '/schedule'
+  },
+  {
+    label: 'Debug',
+    href: '/debug'
   }
 ];
 
@@ -150,6 +155,7 @@ export const Header = () => {
             <ConnectButton 
               client={client} 
               wallets={wallets}
+              chain={activeChain}
               autoConnect={true}
             />
           </div>

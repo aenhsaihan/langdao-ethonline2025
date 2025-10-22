@@ -12,6 +12,9 @@ import { WordRotate } from "~~/components/ui/word-rotate";
 import { ShimmerButton } from "~~/components/ui/shimmer-button";
 import { InteractiveGridPattern } from "~~/components/ui/interactive-grid-pattern";
 import { TextAnimate } from "~~/components/ui/text-animate";
+import { OnboardingFlow } from "~~/components/onboarding/OnboardingFlow";
+
+
 
 const HomeView = ({ onHowItWorksClick }: { onHowItWorksClick: () => void }) => {
   return (
@@ -439,13 +442,15 @@ const HowItWorksView = ({ onBackToHome }: { onBackToHome: () => void }) => {
 
         {/* CTA */}
         <div className="text-center">
-          <button
-            onClick={onBackToHome}
-            className="bg-gradient-to-r from-pink-500 to-orange-500 text-white px-10 py-4 rounded-full font-medium hover:shadow-lg transition-all duration-200 inline-flex items-center text-lg"
+          <ShimmerButton
+            background="rgba(236, 72, 153, 0.9)"
+            shimmerColor="#ffffff"
+            shimmerDuration="2s"
+            className="px-10 py-4 text-lg font-medium text-white"
           >
             <span className="mr-2">⚡</span>
             Get Started Now
-          </button>
+          </ShimmerButton>
         </div>
       </div>
     </div>
@@ -453,22 +458,14 @@ const HowItWorksView = ({ onBackToHome }: { onBackToHome: () => void }) => {
 };
 
 const ConnectedDashboard = () => {
+  const handleOnboardingComplete = () => {
+    // After onboarding is complete, show the main dashboard
+    // For now, we'll just show a success message
+    console.log("Onboarding completed!");
+  };
+
   return (
-    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-900 py-8 overflow-hidden">
-      <InteractiveGridPattern
-        width={60}
-        height={60}
-        squares={[32, 20]}
-        className="opacity-20 dark:opacity-30"
-        squaresClassName="stroke-gray-400/20 dark:stroke-gray-400/40"
-      />
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 lg:p-12">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Welcome to LangDAO!</h1>
-          <p className="text-gray-600 dark:text-gray-300">Your wallet is connected. Dashboard coming soon...</p>
-        </div>
-      </div>
-    </div>
+    <OnboardingFlow onComplete={handleOnboardingComplete} />
   );
 };
 
