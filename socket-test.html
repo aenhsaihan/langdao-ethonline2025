@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h1>Socket.IO Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="controls">
+      <button id="setAvailableBtn" disabled>Set Tutor Available</button>
+      <button id="setUnavailableBtn" disabled>Set Tutor Unavailable</button>
+      <button id="requestTutorBtn" disabled>Request Tutor</button>
+      <button id="answerStudentCallBtn" disabled>Answer Student Call</button>
+      <label for="requestIdInput">Request ID:</label>
+      <input type="text" id="requestIdInput" placeholder="abc" value="" />
+      <button id="startSessionBtn" disabled>Start Session</button>
+    </div>
+    <div id="logs"></div>
+
+    <script>
+      const socket = io("http://localhost:3001");
+      const status = document.getElementById("status");
+      const logs = document.getElementById("logs");
+      const setAvailableBtn = document.getElementById("setAvailableBtn");
+      const setUnavailableBtn = document.getElementById("setUnavailableBtn");
+      const requestTutorBtn = document.getElementById("requestTutorBtn");
+      const studentAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
+      const language = 1;
+      const budgetPerSecond = 100;
+
+      const answerStudentCallBtn = document.getElementById(
+        "answerStudentCallBtn"
+      );
+      const startSessionBtn = document.getElementById("startSessionBtn");
+
+      function addLog(message) {
+        const div = document.createElement("div");
+        div.textContent = new Date().toLocaleTimeString() + ": " + message;
+        logs.appendChild(div);
+      }
+
+      socket.on("connect", () => {
+        status.textContent = "✅ Connected! Socket ID: " + socket.id;
+        addLog("Connected to server");
+
+        // Enable buttons when connected
+        setAvailableBtn.disabled = false;
+        setUnavailableBtn.disabled = false;
+        requestTutorBtn.disabled = false;
+      });
+
+      socket.on("disconnect", () => {
+        status.textContent = "❌ Disconnected";
+        addLog("Disconnected from server");
+      });
+
+      socket.on("tutor:availability-confirmed", (data) => {
+        addLog(
+          "Received tutor:availability-confirmed: " + JSON.stringify(data)
+        );
+      });
+
+      socket.on("tutor:incoming-request", (data) => {
+        addLog("Received tutor:incoming-request: " + JSON.stringify(data));
+        answerStudentCallBtn.disabled = false;
+      });
+
+      socket.on("tutor:session-started", (data) => {
+        addLog("Received tutor:session-started: " + JSON.stringify(data));
+      });
+
+      socket.on("student:request-sent", (data) => {
+        addLog("Received student:request-sent: " + JSON.stringify(data));
+      });
+
+      socket.on("student:tutor-response", (data) => {
+        addLog("Received student:tutor-response: " + JSON.stringify(data));
+        startSessionBtn.disabled = false;
+      });
+
+      socket.on("student:session-started", (data) => {
+        addLog("Received student:session-started: " + JSON.stringify(data));
+      });
+
+      socket.on("student:no-tutors-available", (data) => {
+        addLog("Received student:no-tutors-available: " + JSON.stringify(data));
+      });
+
+      socket.on("error", (error) => {
+        addLog("Error: " + JSON.stringify(error));
+      });
+
+      // Button event handlers
+      setAvailableBtn.addEventListener("click", () => {
+        socket.emit("tutor:set-available", {
+          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          languages: ["1", "2"],
+          rates: { 1: 50, 2: 50 },
+        });
+        addLog("Sent tutor:set-available event");
+      });
+
+      setUnavailableBtn.addEventListener("click", () => {
+        socket.emit("tutor:set-unavailable", {
+          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        });
+        addLog("Sent tutor:set-unavailable event");
+      });
+
+      requestTutorBtn.addEventListener("click", () => {
+        socket.emit("student:request-tutor", {
+          requestId: socket.id,
+          studentAddress,
+          language,
+          budgetPerSecond,
+        });
+        addLog("Sent student:request-tutor event");
+      });
+
+      answerStudentCallBtn.addEventListener("click", () => {
+        console.log("answerStudentCallBtn clicked");
+        socket.emit("tutor:respond-to-request", {
+          requestId: document.getElementById("requestIdInput").value,
+          tutor: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          accepted: true,
+        });
+        addLog("Sent tutor:respond-to-request event");
+      });
+
+      startSessionBtn.addEventListener("click", () => {
+        socket.emit("student:select-tutor", {
+          studentAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          tutorAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          language: 1,
+          tokenAddress: "0x0000000000000000000000000000000000000000",
+        });
+        addLog("Sent student:select-tutor event");
+      });
+    </script>
+  </body>
+</html>

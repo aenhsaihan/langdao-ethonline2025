@@ -3,11 +3,11 @@
 import React, { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
-import { ConnectButton } from "thirdweb/react";
 import { client } from "../client";
 import { wallets } from "../wallets";
 import { SwitchTheme } from "./SwitchTheme";
+import { ConnectButton } from "thirdweb/react";
+import { Bars3Icon, BellIcon } from "@heroicons/react/24/outline";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
 
 type HeaderMenuLink = {
@@ -17,17 +17,21 @@ type HeaderMenuLink = {
 
 export const menuLinks: HeaderMenuLink[] = [
   {
-    label: 'Dashboard',
-    href: '/'
+    label: "Dashboard",
+    href: "/",
   },
   {
-    label: 'My Sessions',
-    href: '/sessions'
+    label: "My Sessions",
+    href: "/sessions",
   },
   {
-    label: 'Schedule',
-    href: '/schedule'
-  }
+    label: "Schedule",
+    href: "/schedule",
+  },
+  {
+    label: "Debug Contracts",
+    href: "/debug",
+  },
 ];
 
 export const HeaderMenuLinks = () => {
@@ -41,8 +45,9 @@ export const HeaderMenuLinks = () => {
           <Link
             key={href}
             href={href}
-            className={`${isActive ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-300"
-              } hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium`}
+            className={`${
+              isActive ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-300"
+            } hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium`}
           >
             {label}
           </Link>
@@ -88,11 +93,7 @@ export const Header = () => {
               <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span>
             </button>
 
-            <ConnectButton 
-              client={client} 
-              wallets={wallets}
-              autoConnect={true}
-            />
+            <ConnectButton client={client} wallets={wallets} autoConnect={true} />
           </div>
 
           {/* Mobile menu button */}
