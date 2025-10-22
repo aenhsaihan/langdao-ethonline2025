@@ -257,6 +257,8 @@ class ContractService {
         throw new Error("Contract not initialized");
       }
 
+      console.log("startSession called with:", sessionData);
+
       const { studentAddress, tutorAddress, language, tokenAddress } =
         sessionData;
 

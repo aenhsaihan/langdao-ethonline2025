@@ -51,6 +51,7 @@ io.on("connection", (socket) => {
   // Handle student requests
   socket.on("student:request-tutor", async (data) => {
     try {
+      console.log("socket.on(student:request-tutor)::data", data);
       // Validate student is registered and not currently studying
       const studentInfo = await contractService.getStudentInfo(
         data.studentAddress
@@ -101,7 +102,13 @@ io.on("connection", (socket) => {
 
   // Handle tutor responses
   socket.on("tutor:respond-to-request", (data) => {
-    const studentSocketId = matchingService.getStudentSocketId(data.requestId);
+    console.log("socket.on(tutor:respond-to-request)::data", data);
+    // const studentSocketId = matchingService.getStudentSocketId(data.requestId);
+    const studentSocketId = data.requestId;
+    console.log(
+      "socket.on(tutor:respond-to-request)::studentSocketId",
+      studentSocketId
+    );
     if (studentSocketId) {
       io.to(studentSocketId).emit("student:tutor-response", {
         requestId: data.requestId,
@@ -114,12 +121,18 @@ io.on("connection", (socket) => {
   // Handle student selection
   socket.on("student:select-tutor", async (data) => {
     try {
+      console.log("socket.on(student:select-tutor)::data", data);
       // Here we would trigger the smart contract transaction
       const result = await contractService.startSession(data);
+      console.log("socket.on(student:select-tutor)::result", result);
       socket.emit("student:session-started", result);
 
       // Notify the selected tutor
       const tutorSocketId = matchingService.getTutorSocketId(data.tutorAddress);
+      console.log(
+        "socket.on(student:select-tutor)::tutorSocketId",
+        tutorSocketId
+      );
       if (tutorSocketId) {
         io.to(tutorSocketId).emit("tutor:session-started", result);
       }
