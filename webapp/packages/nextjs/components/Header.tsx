@@ -19,12 +19,12 @@ type HeaderMenuLink = {
 
 const connectedMenuLinks: HeaderMenuLink[] = [
   {
-    label: 'Dashboard',
-    href: '/'
+    label: "Dashboard",
+    href: "/",
   },
   {
-    label: 'My Sessions',
-    href: '/sessions'
+    label: "My Sessions",
+    href: "/sessions",
   },
   {
     label: 'Schedule',

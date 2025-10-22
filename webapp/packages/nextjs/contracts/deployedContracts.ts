@@ -26,6 +26,56 @@ const deployedContracts = {
             {
               indexed: true,
               internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "FundsDeposited",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "FundsWithdrawn",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
               name: "from",
               type: "address",
             },
@@ -161,7 +211,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "tutorAddress",
+              name: "tutor",
               type: "address",
             },
           ],
@@ -219,6 +269,48 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_studentAddress",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "_tutorAddress",
+              type: "address",
+            },
+          ],
+          name: "canAffordRate",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_token",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_amount",
+              type: "uint256",
+            },
+          ],
+          name: "depositFunds",
+          outputs: [],
+          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -341,6 +433,112 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
+              name: "_student",
+              type: "address",
+            },
+          ],
+          name: "getStudentInfo",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "targetLanguage",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "budgetPerSec",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutor",
+              type: "address",
+            },
+          ],
+          name: "getTutorInfo",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "totalEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "sessionCount",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutor",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_language",
+              type: "uint256",
+            },
+          ],
+          name: "getTutorLanguage",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutor",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_language",
+              type: "uint256",
+            },
+          ],
+          name: "getTutorRate",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
               name: "_userAddress",
               type: "address",
             },
@@ -360,21 +558,40 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "_userAddress",
+              name: "_studentAddress",
               type: "address",
             },
             {
-              internalType: "uint256",
-              name: "_estimatedDuration",
-              type: "uint256",
+              internalType: "address",
+              name: "_tutorAddress",
+              type: "address",
             },
             {
-              internalType: "uint256",
-              name: "_ratePerSecond",
-              type: "uint256",
+              internalType: "address",
+              name: "_token",
+              type: "address",
             },
           ],
           name: "hasSufficientBalance",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+          ],
+          name: "isStudying",
           outputs: [
             {
               internalType: "bool",
@@ -544,7 +761,31 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "studentAddress",
+              name: "student",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+          ],
+          name: "studentBalances",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "balance",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "student",
               type: "address",
             },
           ],
@@ -573,7 +814,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "tutorAddress",
+              name: "tutor",
               type: "address",
             },
           ],
@@ -602,6 +843,19 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "_budgetPerSec",
+              type: "uint256",
+            },
+          ],
+          name: "updateBudget",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
               name: "_language",
               type: "uint256",
             },
@@ -620,7 +874,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "userAddress",
+              name: "user",
               type: "address",
             },
             {
@@ -643,6 +897,24 @@ const deployedContracts = {
         {
           inputs: [],
           name: "withdraw",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_token",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "_amount",
+              type: "uint256",
+            },
+          ],
+          name: "withdrawFunds",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
