@@ -71,27 +71,45 @@ class MatchingService {
    */
   async findMatchingTutors(studentRequest) {
     const { language, budgetPerSecond, studentAddress } = studentRequest;
+    console.log("findMatchingTutors called with:", {
+      language,
+      budgetPerSecond,
+      studentAddress,
+    });
+
+    if (!studentAddress) {
+      console.error("studentAddress is null/undefined in findMatchingTutors");
+      return [];
+    }
+
     const matchingTutors = [];
 
     for (const [socketId, tutor] of this.availableTutors) {
       try {
+        console.log("Checking tutor:", tutor.address);
         // Check if tutor teaches the requested language on contract
         const teachesLanguage = await contractService.getTutorLanguage(
           tutor.address,
           language
         );
         if (!teachesLanguage) {
+          console.log("Tutor does not teach the requested language");
           continue;
         }
+        console.log("Tutor teaches the requested language");
 
         // Get tutor's rate from contract
         const tutorRate = await contractService.getTutorRate(
           tutor.address,
           language
         );
-        if (parseInt(tutorRate) > parseInt(budgetPerSecond)) {
-          continue;
-        }
+        // if (parseInt(tutorRate) > parseInt(budgetPerSecond)) {
+        //   console.log("Tutor's rate is higher than the student's budget");
+        //   console.log("Tutor's rate:", tutorRate);
+        //   console.log("Student's budget:", budgetPerSecond);
+        //   continue;
+        // }
+        // console.log("Tutor's rate is within the student's budget");
 
         // Check if student can afford this tutor
         const canAfford = await contractService.canAffordRate(
@@ -99,8 +117,10 @@ class MatchingService {
           tutor.address
         );
         if (!canAfford) {
+          console.log("Student cannot afford the tutor's rate");
           continue;
         }
+        console.log("Student can afford the tutor's rate");
 
         matchingTutors.push({
           socketId: tutor.socketId,
@@ -110,6 +130,7 @@ class MatchingService {
           totalEarnings: tutor.totalEarnings,
           sessionCount: tutor.sessionCount,
         });
+        console.log("Matching tutor found:", matchingTutors);
       } catch (error) {
         console.error(`Error checking tutor ${tutor.address}:`, error);
         continue;

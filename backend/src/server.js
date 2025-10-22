@@ -52,27 +52,35 @@ io.on("connection", (socket) => {
   socket.on("student:request-tutor", async (data) => {
     try {
       // Validate student is registered and not currently studying
-      const studentInfo = await contractService.getStudentInfo(data.student);
+      const studentInfo = await contractService.getStudentInfo(
+        data.studentAddress
+      );
       if (!studentInfo.isRegistered) {
         socket.emit("error", { message: "Student not registered" });
         return;
       }
 
-      const isStudying = await contractService.isStudying(data.student);
+      const isStudying = await contractService.isStudying(data.studentAddress);
       if (isStudying) {
         socket.emit("error", { message: "Student is already in a session" });
         return;
       }
 
+      console.log("socket.on(student:request-tutor)::data", data);
+
       const matchingTutors = await matchingService.findMatchingTutors(data);
+      console.log(
+        "socket.on(student:request-tutor)::matchingTutors",
+        matchingTutors
+      );
       if (matchingTutors.length > 0) {
         // Broadcast to all matching tutors
         matchingTutors.forEach((tutor) => {
           io.to(tutor.socketId).emit("tutor:incoming-request", {
             requestId: data.requestId,
-            student: data.student,
+            student: data.studentAddress,
             language: data.language,
-            budget: data.budget,
+            budget: data.budgetPerSecond,
           });
         });
 
