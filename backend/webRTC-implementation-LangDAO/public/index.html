@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>WebRTC Demo</title>
+    <link rel="icon" href="data:,">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 1fr auto;
+            /* Reserve space for navbar */
+            padding-top: 80px;
+        }
+
+        /* Main Content Grid */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 80px); /* Adjust height to account for navbar space */
+        }
+
+        /* Left Side - Videos and Info Cards */
+        .video-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .video-container {
+            position: relative;
+            aspect-ratio: 4/3;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+            border: 3px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .video-container.speaking {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .video-container.muted {
+            border-color: #ff4757;
+        }
+
+        .video-container.video-off {
+            border-color: #ff4757;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .role-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #4A90E2;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .role-badge.tutor {
+            background: #4A90E2;
+        }
+
+        .role-badge.student {
+            background: #FF6B6B;
+        }
+
+        .video-status-indicators {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+            padding: 6px;
+            display: none;
+        }
+
+        .status-indicator.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-indicator svg {
+            width: 16px;
+            height: 16px;
+            stroke: #ff4757;
+            fill: none;
+        }
+
+        /* Info Cards */
+        .info-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .info-card-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+        }
+
+        .info-card-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-duration {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 400;
+        }
+
+        .chat-subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .message.own {
+            align-items: flex-end;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .message-bubble {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 16px;
+            border-radius: 16px;
+            max-width: 80%;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.own .message-bubble {
+            background: #4A90E2;
+            color: white;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .chat-input {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 16px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .chat-input input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .send-btn {
+            background: #4A90E2;
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Bottom Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .control-btn svg, .control-btn img {
+            width: 24px;
+            height: 24px;
+            filter: brightness(0) invert(1);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .control-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .control-btn.active svg, .control-btn.active img {
+            filter: brightness(0);
+        }
+
+        .control-btn.muted {
+            background: #ff4757;
+        }
+
+        .control-btn.muted svg, .control-btn.muted img {
+            filter: brightness(0) invert(1);
+        }
+
+        .control-btn.danger {
+            background: #ff4757;
+            padding: 12px 24px;
+            border-radius: 28px;
+            width: auto;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .control-btn.danger:hover {
+            background: #ff3742;
+        }
+
+        /* SVG Icons */
+        .icon-mic, .icon-mic-off, .icon-video, .icon-video-off {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+            }
+
+            .chat-panel {
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding-top: 70px; /* Slightly smaller navbar on mobile */
+            }
+
+            .main-content {
+                height: calc(100vh - 70px);
+            }
+
+            .videos-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .top-nav {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            .video-container {
+                min-height: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding-top: 60px; /* Even smaller navbar on very small screens */
+            }
+
+            .main-content {
+                padding: 10px;
+                gap: 10px;
+                height: calc(100vh - 60px);
+            }
+
+            .videos-grid {
+                gap: 10px;
+            }
+
+            .info-cards {
+                gap: 10px;
+            }
+
+            .chat-panel {
+                height: 250px;
+            }
+
+            .controls {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .control-btn {
+                width: 50px;
+                height: 50px;
+            }
+
+            .control-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            .top-nav {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .session-info {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Left Side - Videos and Info Cards -->
+        <div class="video-section">
+            <!-- Videos Grid -->
+            <div class="videos-grid">
+                <div class="video-container speaking" id="localContainer">
+                    <video id="localVideo" autoplay playsinline muted></video>
+                    <div class="video-label" id="localLabel">You</div>
+                    <div class="role-badge" id="localRoleBadge">student</div>
+                    <div class="video-status-indicators">
+                        <div class="status-indicator" id="localMuteIndicator">
+                            <svg viewBox="0 0 24 24" stroke-width="2">
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                <path d="m9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                                <path d="m17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
+                            </svg>
+                        </div>
+                        <div class="status-indicator" id="localVideoOffIndicator">
+                            <svg viewBox="0 0 24 24" stroke-width="2">
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                <path d="m10.5 5h6a2 2 0 0 1 2 2v8.5"/>
+                                <path d="M17 11l4.586-4.586"/>
+                                <path d="M22 12v5a2 2 0 0 1-2 2H4"/>
+                                <path d="m2 2l20 20"/>
+                                <path d="M7 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-container" id="remoteContainer">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <div class="video-label" id="remoteLabel">Connecting...</div>
+                    <div class="role-badge" id="remoteRoleBadge">tutor</div>
+                    <div class="video-status-indicators">
+                        <div class="status-indicator" id="remoteMuteIndicator">
+                            <svg viewBox="0 0 24 24" stroke-width="2">
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                <path d="m9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                                <path d="m17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
+                            </svg>
+                        </div>
+                        <div class="status-indicator" id="remoteVideoOffIndicator">
+                            <svg viewBox="0 0 24 24" stroke-width="2">
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                                <path d="m10.5 5h6a2 2 0 0 1 2 2v8.5"/>
+                                <path d="M17 11l4.586-4.586"/>
+                                <path d="M22 12v5a2 2 0 0 1-2 2H4"/>
+                                <path d="m2 2l20 20"/>
+                                <path d="M7 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Cards -->
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-card-label">Language</div>
+                    <div class="info-card-value" id="languageDisplay">Spanish</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">Level</div>
+                    <div class="info-card-value">Intermediate</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">Focus</div>
+                    <div class="info-card-value">Conversation</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Chat Panel -->
+        <div class="chat-panel">
+            <div class="chat-header">
+                <div class="chat-title">
+                    <span>Session Chat</span>
+                    <span class="session-duration" id="callTimer">00:00</span>
+                </div>
+                <div class="chat-subtitle">Share notes and resources</div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will be populated dynamically -->
+            </div>
+
+            <div class="chat-input">
+                <input type="text" placeholder="Type a message..." id="chatInput">
+                <button class="send-btn" id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="controls">
+        <button class="control-btn active" id="muteBtn" title="Mute/Unmute">
+            <svg class="icon-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="m19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+        </button>
+        <button class="control-btn active" id="videoBtn" title="Camera On/Off">
+            <svg class="icon-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+        </button>
+        <button class="control-btn danger" id="endBtn" title="End Call">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+            End Session
+        </button>
+    </div>
+
+    <script>
+        // ISO 639 Language codes (hardcoded for lightweight deployment)
+        const languages = {
+            'es': { name: "Spanish", native: "Español" },
+            'fr': { name: "French", native: "Français" },
+            'de': { name: "German", native: "Deutsch" },
+            'it': { name: "Italian", native: "Italiano" },
+            'pt': { name: "Portuguese", native: "Português" },
+            'ru': { name: "Russian", native: "Русский" },
+            'ja': { name: "Japanese", native: "日本語" },
+            'ko': { name: "Korean", native: "한국어" },
+            'zh': { name: "Chinese", native: "中文" },
+            'ar': { name: "Arabic", native: "العربية" },
+            'nl': { name: "Dutch", native: "Nederlands" },
+            'sv': { name: "Swedish", native: "Svenska" },
+            'no': { name: "Norwegian", native: "Norsk" },
+            'fi': { name: "Finnish", native: "Suomi" },
+            'pl': { name: "Polish", native: "Polski" },
+            'en': { name: "English", native: "English" }
+        };
+
+
+        // Get session parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room') || 'default';
+        const userRole = urlParams.get('role') || 'user';
+        const userAddress = urlParams.get('address') || '';
+        const languageCode = urlParams.get('language') || 'es';
+        const sessionStartParam = urlParams.get('sessionStart') || Date.now();
+
+        // Get actual language data
+        const languageData = languages[languageCode] || languages['es'];
+
+        // Session metadata for backend integration
+        const sessionData = {
+            sessionId: roomId,
+            userRole: userRole,
+            userAddress: userAddress,
+            language: languageCode,
+            startTime: parseInt(sessionStartParam)
+        };
+
+        // Function to shorten wallet addresses
+        function shortenAddress(address) {
+            if (!address || address.length < 8) return address;
+            return `${address.slice(0, 4)}...${address.slice(-4)}`;
+        }
+
+        // Store remote user's address when they connect
+        let remoteUserAddress = '';
+
+        // Initialize demo chat messages after page loads
+        function initializeDemoChat() {
+            const now = new Date();
+            const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+            const oneMinuteAgo = new Date(now.getTime() - 1 * 60 * 1000);
+
+            // Add demo messages with addresses and roles
+            if (userRole === 'tutor') {
+                addChatMessage(`${shortenAddress(userAddress)} (tutor)`, "Let's practice!", true, twoMinutesAgo);
+                addChatMessage('Connecting...', "Sure!", false, oneMinuteAgo);
+            } else {
+                addChatMessage('Connecting...', "Let's practice!", false, twoMinutesAgo);
+                addChatMessage(`${shortenAddress(userAddress)} (student)`, "Sure!", true, oneMinuteAgo);
+            }
+        }
+
+        // Update the demo message sender when remote user connects
+        function updateDemoMessageSender() {
+            const connectingMessages = chatMessages.querySelectorAll('.message-sender');
+            connectingMessages.forEach(sender => {
+                if (sender.textContent === 'Connecting...' && remoteUserAddress) {
+                    const remoteRole = userRole === 'student' ? 'tutor' : 'student';
+                    sender.textContent = `${shortenAddress(remoteUserAddress)} (${remoteRole})`;
+                }
+            });
+        }
+
+        // Connect to WebSocket with room parameter - use secure protocol for HTTPS
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${location.host}?room=${roomId}`);
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        });
+
+        // Display session info
+        document.title = `WebRTC Demo - ${languageData.name} Session`;
+
+        // Update language display
+        document.getElementById('languageDisplay').textContent = languageData.name;
+
+        // Chat initialization will happen after DOM elements are declared
+
+        // Update labels and badges based on role
+        // Local is always "You" (the current user)
+        document.getElementById('localLabel').textContent = 'You';
+        document.getElementById('localRoleBadge').textContent = userRole;
+        document.getElementById('localRoleBadge').className = `role-badge ${userRole}`;
+
+        // Remote is the other person
+        const remoteRole = userRole === 'student' ? 'tutor' : 'student';
+        document.getElementById('remoteLabel').textContent = 'Connecting...';
+        document.getElementById('remoteRoleBadge').textContent = remoteRole;
+        document.getElementById('remoteRoleBadge').className = `role-badge ${remoteRole}`;
+
+        const localVideo = document.getElementById("localVideo");
+        const remoteVideo = document.getElementById("remoteVideo");
+        const localContainer = document.getElementById("localContainer");
+        const remoteContainer = document.getElementById("remoteContainer");
+
+        // Control elements
+        const muteBtn = document.getElementById("muteBtn");
+        const videoBtn = document.getElementById("videoBtn");
+        const endBtn = document.getElementById("endBtn");
+
+        // Track states
+        let isAudioEnabled = true;
+        let isVideoEnabled = true;
+        let localStream = null;
+        let callStartTime = null;
+        let elapsedSeconds = 0;
+        let timerInterval = null;
+
+        // Timer and messaging functions
+        function startCallTimer() {
+            // Don't restart timer if already running, just send session started event
+            if (!timerInterval) {
+                callStartTime = Date.now();
+                // Timer is already started above, no need to restart
+            }
+
+            // Send session started event (critical event #1)
+            const sessionStartData = {
+                type: 'session-started',
+                sessionId: roomId,
+                participants: [userRole, userRole === 'student' ? 'tutor' : 'student'],
+                userAddress: userAddress,
+                language: languageCode,
+                timestamp: callStartTime
+            };
+            sendMessageToParent(sessionStartData);
+            sendHeartbeat(sessionStartData);
+
+            // Start heartbeat for backend integration
+            if (!heartbeatInterval) {
+                startHeartbeat();
+            }
+        }
+
+        function sendMessageToParent(data) {
+            if (window.parent !== window) {
+                window.parent.postMessage(data, '*');
+            }
+            // Also log for debugging
+            console.log('Sent to parent:', data);
+        }
+
+        // Heartbeat mechanism for backend integration
+        function sendHeartbeat(additionalData = {}) {
+            const heartbeatData = {
+                ...sessionData,
+                ...additionalData,
+                heartbeat: true,
+                timestamp: Date.now(),
+                isAudioEnabled: isAudioEnabled,
+                isVideoEnabled: isVideoEnabled,
+                elapsedSeconds: elapsedSeconds
+            };
+
+            // Send via WebSocket to server (which forwards to backend)
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'heartbeat',
+                    data: heartbeatData
+                }));
+            }
+
+            console.log('Heartbeat sent:', heartbeatData);
+        }
+
+        // Start heartbeat interval (every 10 seconds)
+        let heartbeatInterval;
+        function startHeartbeat() {
+            heartbeatInterval = setInterval(() => {
+                sendHeartbeat({
+                    type: 'session-heartbeat'
+                });
+            }, 10000); // 10 seconds
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
+        function endCallTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            // Stop heartbeat
+            stopHeartbeat();
+
+            // Send session ended event (critical event #4)
+            const sessionEndData = {
+                type: 'session-ended',
+                sessionId: roomId,
+                totalSeconds: elapsedSeconds,
+                endedBy: userRole,
+                userAddress: userAddress,
+                timestamp: Date.now()
+            };
+            sendMessageToParent(sessionEndData);
+            sendHeartbeat(sessionEndData);
+        }
+
+        // Capture camera + mic
+        async function initializeMedia() {
+            try {
+                // Check if we're in a secure context
+                if (!window.isSecureContext && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    throw new Error('HTTPS is required for camera/microphone access. Please access this page over HTTPS.');
+                }
+
+                // Check if getUserMedia is available
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Your browser does not support camera/microphone access.');
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localStream = stream;
+                localVideo.srcObject = stream;
+                stream.getTracks().forEach(track => pc.addTrack(track, stream));
+                setupAudioLevelDetection(stream, localContainer);
+
+                // Send user connected event
+                sendMessageToParent({
+                    type: 'user-connected',
+                    sessionId: roomId,
+                    userRole: userRole,
+                    timestamp: Date.now()
+                });
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+
+                let errorMessage = 'Camera/microphone access failed: ';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += 'Permission denied. Please allow camera and microphone access and refresh the page.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += 'No camera or microphone found. Please check your devices.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage += 'Camera/microphone not supported in this browser.';
+                } else if (error.message.includes('HTTPS')) {
+                    errorMessage = error.message;
+                } else {
+                    errorMessage += error.message;
+                }
+
+                alert(errorMessage);
+                document.getElementById('remoteLabel').textContent = 'Media Access Failed';
+            }
+        }
+
+        initializeMedia();
+
+        // Start timer immediately - continues when peer connects
+        let sessionStart = Date.now();
+        callStartTime = sessionStart; // Set this immediately
+        timerInterval = setInterval(() => {
+            elapsedSeconds = Math.floor((Date.now() - sessionStart) / 1000);
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const seconds = elapsedSeconds % 60;
+            document.getElementById('callTimer').textContent =
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Display remote stream
+        pc.ontrack = (event) => {
+            remoteVideo.srcObject = event.streams[0];
+            const remoteRole = userRole === 'student' ? 'tutor' : 'student';
+            document.getElementById('remoteLabel').textContent = remoteRole === 'tutor' ? 'Tutor' : 'Student';
+            setupAudioLevelDetection(event.streams[0], remoteContainer);
+
+            // Start billing timer when both parties are connected
+            if (!callStartTime) {
+                startCallTimer();
+            }
+        };
+
+        // Audio level detection for speaking indicator
+        function setupAudioLevelDetection(stream, container) {
+            const audioContext = new AudioContext();
+            const analyser = audioContext.createAnalyser();
+            const microphone = audioContext.createMediaStreamSource(stream);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            microphone.connect(analyser);
+            analyser.fftSize = 256;
+
+            function checkAudioLevel() {
+                analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+                if (average > 15) {
+                    container.classList.add('speaking');
+                } else {
+                    container.classList.remove('speaking');
+                }
+
+                requestAnimationFrame(checkAudioLevel);
+            }
+
+            checkAudioLevel();
+        }
+
+        // Send ICE candidates
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                ws.send(JSON.stringify({ type: "ice", candidate: event.candidate }));
+            }
+        };
+
+        // WebSocket message handling is now done in the chat section below
+
+        // Create offer if first peer
+        ws.onopen = async () => {
+            // Wait 1 sec to see if other peer connects
+            setTimeout(async () => {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                ws.send(JSON.stringify({
+                    type: "offer",
+                    offer,
+                    userAddress: userAddress,
+                    userRole: userRole
+                }));
+            }, 1000);
+        };
+
+        // Track remote user states
+        let remoteAudioEnabled = true;
+        let remoteVideoEnabled = true;
+
+        // Update status indicators for local and remote users
+        function updateLocalStatusIndicators(audioEnabled, videoEnabled) {
+            const localMuteIndicator = document.getElementById('localMuteIndicator');
+            const localVideoOffIndicator = document.getElementById('localVideoOffIndicator');
+            const localContainer = document.getElementById('localContainer');
+
+            localMuteIndicator.classList.toggle('show', !audioEnabled);
+            localVideoOffIndicator.classList.toggle('show', !videoEnabled);
+
+            localContainer.classList.toggle('muted', !audioEnabled);
+            localContainer.classList.toggle('video-off', !videoEnabled);
+        }
+
+        function updateRemoteStatusIndicators(audioEnabled, videoEnabled) {
+            const remoteMuteIndicator = document.getElementById('remoteMuteIndicator');
+            const remoteVideoOffIndicator = document.getElementById('remoteVideoOffIndicator');
+            const remoteContainer = document.getElementById('remoteContainer');
+
+            remoteMuteIndicator.classList.toggle('show', !audioEnabled);
+            remoteVideoOffIndicator.classList.toggle('show', !videoEnabled);
+
+            remoteContainer.classList.toggle('muted', !audioEnabled);
+            remoteContainer.classList.toggle('video-off', !videoEnabled);
+        }
+
+        // Update control button icons
+        function updateMuteButton(enabled) {
+            const muteBtn = document.getElementById('muteBtn');
+            muteBtn.classList.toggle('active', enabled);
+            muteBtn.classList.toggle('muted', !enabled);
+
+            // Update icon
+            const svg = muteBtn.querySelector('svg');
+            if (enabled) {
+                // Clean mic icon
+                svg.innerHTML = `
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="m19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                `;
+            } else {
+                // Mic off icon (clean muted mic)
+                svg.innerHTML = `
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="m9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                    <path d="m17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                `;
+            }
+        }
+
+        function updateVideoButton(enabled) {
+            const videoBtn = document.getElementById('videoBtn');
+            videoBtn.classList.toggle('active', enabled);
+            videoBtn.classList.toggle('muted', !enabled);
+
+            // Update icon
+            const svg = videoBtn.querySelector('svg');
+            if (enabled) {
+                // Video icon
+                svg.innerHTML = `
+                    <polygon points="23 7 16 12 23 17"/>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                `;
+            } else {
+                // Video off icon (camera with slash)
+                svg.innerHTML = `
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                    <path d="M10.5 5H19a2 2 0 0 1 2 2v8.5"/>
+                    <path d="M17 11l4.586-4.586"/>
+                    <path d="M22 12v5a2 2 0 0 1-2 2H4"/>
+                    <path d="m2 2l20 20"/>
+                    <path d="M7 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16"/>
+                `;
+            }
+        }
+
+        // Control button functionality
+        muteBtn.addEventListener('click', () => {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    isAudioEnabled = audioTrack.enabled;
+                    updateMuteButton(isAudioEnabled);
+                    updateLocalStatusIndicators(isAudioEnabled, isVideoEnabled);
+
+                    // Send status update to other users
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'user-status',
+                            audioEnabled: isAudioEnabled,
+                            videoEnabled: isVideoEnabled,
+                            userRole: userRole
+                        }));
+                    }
+
+                    // Log action for parent and backend
+                    const actionData = {
+                        type: 'user-action',
+                        action: isAudioEnabled ? 'unmuted' : 'muted',
+                        sessionId: roomId,
+                        userRole: userRole,
+                        userAddress: userAddress,
+                        timestamp: Date.now()
+                    };
+                    sendMessageToParent(actionData);
+                    sendHeartbeat(actionData);
+                }
+            }
+        });
+
+        videoBtn.addEventListener('click', () => {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    isVideoEnabled = videoTrack.enabled;
+                    updateVideoButton(isVideoEnabled);
+                    updateLocalStatusIndicators(isAudioEnabled, isVideoEnabled);
+
+                    // Send status update to other users
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'user-status',
+                            audioEnabled: isAudioEnabled,
+                            videoEnabled: isVideoEnabled,
+                            userRole: userRole
+                        }));
+                    }
+
+                    // Log action for parent and backend
+                    const actionData = {
+                        type: 'user-action',
+                        action: isVideoEnabled ? 'video-enabled' : 'video-disabled',
+                        sessionId: roomId,
+                        userRole: userRole,
+                        userAddress: userAddress,
+                        timestamp: Date.now()
+                    };
+                    sendMessageToParent(actionData);
+                    sendHeartbeat(actionData);
+                }
+            }
+        });
+
+        endBtn.addEventListener('click', () => {
+            if (confirm('End the call?')) {
+                // Send call termination message to other participants first
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'call-ended',
+                        endedBy: userRole,
+                        userAddress: userAddress,
+                        sessionId: roomId,
+                        timestamp: Date.now()
+                    }));
+                }
+
+                endCall();
+            }
+        });
+
+        // Function to handle call termination (used by both local end and remote end)
+        function endCall() {
+            endCallTimer();
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            pc.close();
+            ws.close();
+
+            // Show a brief message before closing
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 20px;">
+                    <h2>Call Ended</h2>
+                    <p>The session has been terminated.</p>
+                </div>
+            `;
+
+            // Close window after a brief delay
+            setTimeout(() => {
+                window.close();
+            }, 2000);
+        }
+
+        // Chat functionality
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatMessages = document.getElementById('chatMessages');
+
+        // Initialize chat with wallet addresses now that DOM is ready
+        initializeDemoChat();
+
+        function addChatMessage(sender, text, isOwn = false, timestamp = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+
+            const timeToShow = timestamp || new Date();
+            const time = timeToShow.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            messageDiv.innerHTML = `
+                <div class="message-sender">${sender}</div>
+                <div class="message-bubble">${text}</div>
+                <div class="message-time">${time}</div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addChatMessage(`${shortenAddress(userAddress)} (${userRole})`, text, true);
+            chatInput.value = '';
+
+            // Send message via WebSocket
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'chat',
+                    sender: userRole,
+                    senderAddress: userAddress,
+                    message: text,
+                    timestamp: Date.now()
+                }));
+            }
+        }
+
+        sendBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+
+        // Handle incoming WebSocket messages
+        ws.onmessage = async (event) => {
+            let data = event.data;
+            if (data instanceof Blob) {
+                data = await data.text();
+            }
+
+            try {
+                const msg = JSON.parse(data);
+
+                if (msg.type === 'chat') {
+                    // Store remote user's address if not already stored
+                    if (msg.senderAddress && !remoteUserAddress) {
+                        remoteUserAddress = msg.senderAddress;
+                        // Update the demo message that shows "Connecting..."
+                        updateDemoMessageSender();
+                    }
+
+                    const senderAddress = msg.senderAddress || '';
+                    const senderRole = msg.sender || 'user';
+                    addChatMessage(`${shortenAddress(senderAddress)} (${senderRole})`, msg.message, false);
+                } else if (msg.type === 'call-ended') {
+                    // Other participant ended the call - terminate immediately
+                    console.log('Call ended by remote participant:', msg);
+
+                    // Send user disconnected event to parent/backend
+                    sendMessageToParent({
+                        type: 'user-disconnected',
+                        sessionId: roomId,
+                        userRole: userRole,
+                        reason: 'call-ended-by-peer',
+                        timestamp: Date.now()
+                    });
+
+                    // End the call immediately without confirmation
+                    endCall();
+                } else if (msg.type === 'user-status') {
+                    // Update remote user status indicators
+                    remoteAudioEnabled = msg.audioEnabled;
+                    remoteVideoEnabled = msg.videoEnabled;
+                    updateRemoteStatusIndicators(remoteAudioEnabled, remoteVideoEnabled);
+                    console.log('Remote user status updated:', msg);
+                } else if (msg.type === "offer") {
+                    // Store remote user's address from offer
+                    if (msg.userAddress && !remoteUserAddress) {
+                        remoteUserAddress = msg.userAddress;
+                        updateDemoMessageSender();
+                    }
+
+                    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    ws.send(JSON.stringify({
+                        type: "answer",
+                        answer,
+                        userAddress: userAddress,
+                        userRole: userRole
+                    }));
+                } else if (msg.type === "answer") {
+                    // Store remote user's address from answer
+                    if (msg.userAddress && !remoteUserAddress) {
+                        remoteUserAddress = msg.userAddress;
+                        updateDemoMessageSender();
+                    }
+
+                    await pc.setRemoteDescription(new RTCSessionDescription(msg.answer));
+                } else if (msg.type === "ice") {
+                    try { await pc.addIceCandidate(msg.candidate); } catch (e) { }
+                }
+            } catch (error) {
+                // If not JSON, treat as binary WebRTC data
+                console.log('Non-JSON message received');
+            }
+        };
+    </script>
+</body>
+
+</html>
