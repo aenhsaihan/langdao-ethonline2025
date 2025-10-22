@@ -7,12 +7,18 @@
   <body>
     <h1>Socket.IO Connection Test</h1>
     <div id="status">Connecting...</div>
+    <div id="controls">
+      <button id="setAvailableBtn" disabled>Set Tutor Available</button>
+      <button id="setUnavailableBtn" disabled>Set Tutor Unavailable</button>
+    </div>
     <div id="logs"></div>
 
     <script>
       const socket = io("http://localhost:3001");
       const status = document.getElementById("status");
       const logs = document.getElementById("logs");
+      const setAvailableBtn = document.getElementById("setAvailableBtn");
+      const setUnavailableBtn = document.getElementById("setUnavailableBtn");
 
       function addLog(message) {
         const div = document.createElement("div");
@@ -24,13 +30,9 @@
         status.textContent = "✅ Connected! Socket ID: " + socket.id;
         addLog("Connected to server");
 
-        // Test tutor availability
-        socket.emit("tutor:set-available", {
-          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-          languages: ["English", "Spanish"],
-          rates: { English: 50, Spanish: 50 },
-        });
-        addLog("Sent tutor:set-available event");
+        // Enable buttons when connected
+        setAvailableBtn.disabled = false;
+        setUnavailableBtn.disabled = false;
       });
 
       socket.on("disconnect", () => {
@@ -46,6 +48,23 @@
 
       socket.on("error", (error) => {
         addLog("Error: " + JSON.stringify(error));
+      });
+
+      // Button event handlers
+      setAvailableBtn.addEventListener("click", () => {
+        socket.emit("tutor:set-available", {
+          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          languages: ["English", "Spanish"],
+          rates: { English: 50, Spanish: 50 },
+        });
+        addLog("Sent tutor:set-available event");
+      });
+
+      setUnavailableBtn.addEventListener("click", () => {
+        socket.emit("tutor:set-unavailable", {
+          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        });
+        addLog("Sent tutor:set-unavailable event");
       });
     </script>
   </body>

@@ -7,9 +7,9 @@ socket.on("connect", () => {
 
   // Test tutor availability
   socket.emit("tutor:set-available", {
-    tutorAddress: "0x1234567890123456789012345678901234567890",
+    address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     languages: ["English", "Spanish"],
-    hourlyRate: 50,
+    rates: { English: 50, Spanish: 50 },
   });
   console.log("📤 Sent tutor:set-available event");
 });
