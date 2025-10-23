@@ -29,6 +29,12 @@ export const MockTokenFaucet = () => {
     functionName: "totalSupply",
   });
 
+  const { data: balance } = useScaffoldReadContract({
+    contractName: "MockERC20",
+    functionName: "balanceOf",
+    args: [inputAddress],
+  });
+
   const { writeContractAsync: writeContractAsync } = useScaffoldWriteContract({
     contractName: "MockERC20",
   });
@@ -91,6 +97,12 @@ export const MockTokenFaucet = () => {
               <div>
                 <span className="text-sm font-bold pl-3">Total Supply:</span>
                 <span>{totalSupply?.toString()}</span>
+              </div>
+            </div>
+            <div className="flex space-x-4">
+              <div>
+                <span className="text-sm font-bold pl-3">Token balance:</span>
+                <span>{balance?.toString()}</span>
               </div>
             </div>
             <div className="flex flex-col space-y-3">
