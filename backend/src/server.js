@@ -1,154 +1,383 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
-const cors = require("cors");
-require("dotenv").config();
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const redis = require('redis');
 
-const matchingService = require("./services/matchingService");
-const contractService = require("./services/contractService");
+// Redis client configuration
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+redisClient.on('error', (err) => console.error('Redis error:', err));
+redisClient.on('connect', () => console.log('Connected to Redis'));
+
+// Initialize Redis connection
+(async () => {
+  try {
+    await redisClient.connect();
+  } catch (error) {
+    console.error('Failed to connect to Redis:', error);
+  }
+})(); 
+
+const tutorRoutes = require('./routes/tutors');
+const studentRoutes = require('./routes/students');
+const matchingRoutes = require('./routes/matching');
+const matchingService = require('./services/matchingService');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: ["http://localhost:3000", "null"], // Allow file:// protocol for testing
-    methods: ["GET", "POST"],
-  },
+
+// Configuration
+const PORT = process.env.PORT || 4000;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Security middleware
+app.set('trust proxy', 1);
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false
+}));
+
+// CORS
+app.use(cors({
+  origin: CORS_ORIGIN,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Logging
+if (NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
+}
+
+// Rate limiting
+app.use(rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health check
+app.get('/health', async (req, res) => {
+  try {
+    // Check Redis connection
+    let redisStatus = 'disconnected';
+    try {
+      await redisClient.ping();
+      redisStatus = 'connected';
+    } catch (redisError) {
+      console.error('Redis health check failed:', redisError);
+    }
+
+    res.status(200).json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV,
+      redis: redisStatus
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      environment: NODE_ENV,
+      error: error.message
+    });
+  }
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// API routes
+app.use('/api/tutors', tutorRoutes);
+app.use('/api/students', studentRoutes);
+app.use('/api/matching', matchingRoutes);
 
-// Routes
-app.use("/api/tutors", require("./routes/tutors"));
-app.use("/api/students", require("./routes/students"));
-app.use("/api/matching", require("./routes/matching"));
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
-// WebSocket connection handling
-io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+  
+  const status = err.status || err.statusCode || 500;
+  const message = NODE_ENV === 'production' ? 'Internal Server Error' : err.message;
+  
+  res.status(status).json({ 
+    error: message,
+    ...(NODE_ENV !== 'production' && { stack: err.stack })
+  });
+});
 
-  // Handle tutor availability
-  socket.on("tutor:set-available", async (data) => {
-    try {
-      await matchingService.setTutorAvailable(socket.id, data);
-      socket.broadcast.emit("tutor:available-updated", data);
-      socket.emit("tutor:availability-confirmed", { success: true });
-    } catch (error) {
-      socket.emit("tutor:availability-error", {
-        success: false,
-        error: error.message,
-      });
+// Socket.IO setup
+const io = socketIo(server, {
+  cors: {
+    origin: CORS_ORIGIN,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// Socket rate limiting configuration
+const SOCKET_RATE_LIMIT = 10; // requests per minute per socket
+
+async function checkSocketRateLimit(socketId) {
+  try {
+    const key = `rate_limit:${socketId}`;
+    const current = await redisClient.incr(key);
+    
+    if (current === 1) {
+      await redisClient.expire(key, 60); // Set TTL on first request
     }
-  });
+    
+    return current <= SOCKET_RATE_LIMIT;
+  } catch (error) {
+    console.error('Error checking socket rate limit:', error);
+    return true; // Allow request if rate limiting fails
+  }
+}
 
-  socket.on("tutor:set-unavailable", (data) => {
-    matchingService.setTutorUnavailable(socket.id, data);
-    socket.broadcast.emit("tutor:available-updated", data);
-  });
+// Socket connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
 
-  // Handle student requests
-  socket.on("student:request-tutor", async (data) => {
+  // Tutor sets availability
+  socket.on('tutor:set-available', async (data) => {
     try {
-      console.log("socket.on(student:request-tutor)::data", data);
-      // Validate student is registered and not currently studying
-      const studentInfo = await contractService.getStudentInfo(
-        data.studentAddress
-      );
-      if (!studentInfo.isRegistered) {
-        socket.emit("error", { message: "Student not registered" });
+      if (!checkSocketRateLimit(socket.id)) {
+        socket.emit('error', { message: 'Rate limit exceeded' });
         return;
       }
 
-      const isStudying = await contractService.isStudying(data.studentAddress);
-      if (isStudying) {
-        socket.emit("error", { message: "Student is already in a session" });
+      // Validate input
+      if (!data || !data.address || !data.language || typeof data.ratePerSecond === 'undefined') {
+        socket.emit('error', { message: 'Missing required fields: address, language, ratePerSecond' });
         return;
       }
 
-      console.log("socket.on(student:request-tutor)::data", data);
+      const result = await matchingService.setTutorAvailable(socket.id, {
+        address: data.address.toLowerCase(),
+        language: data.language,
+        ratePerSecond: data.ratePerSecond
+      });
 
-      const matchingTutors = await matchingService.findMatchingTutors(data);
-      console.log(
-        "socket.on(student:request-tutor)::matchingTutors",
-        matchingTutors
-      );
-      if (matchingTutors.length > 0) {
-        // Broadcast to all matching tutors
-        matchingTutors.forEach((tutor) => {
-          io.to(tutor.socketId).emit("tutor:incoming-request", {
-            requestId: data.requestId,
-            student: data.studentAddress,
-            language: data.language,
-            budget: data.budgetPerSecond,
-          });
-        });
-
-        socket.emit("student:request-sent", {
-          requestId: data.requestId,
-          tutorsNotified: matchingTutors.length,
+      if (result.success) {
+        socket.emit('tutor:availability-set', { success: true });
+        io.emit('tutor:available-updated', { 
+          action: 'added',
+          tutor: result.tutor 
         });
       } else {
-        socket.emit("student:no-tutors-available", {
+        socket.emit('error', { message: result.error });
+      }
+    } catch (error) {
+      console.error('Error setting tutor availability:', error);
+      socket.emit('error', { message: 'Failed to set availability' });
+    }
+  });
+
+  // Student requests tutor
+  socket.on('student:request-tutor', async (data) => {
+    try {
+      if (!checkSocketRateLimit(socket.id)) {
+        socket.emit('error', { message: 'Rate limit exceeded' });
+        return;
+      }
+
+      // Validate input
+      if (!data || !data.requestId || !data.studentAddress || !data.language || typeof data.budgetPerSecond === 'undefined') {
+        socket.emit('error', { message: 'Missing required fields' });
+        return;
+      }
+
+      const matchingTutors = await matchingService.findMatchingTutors({
+        language: data.language,
+        budgetPerSecond: data.budgetPerSecond,
+        studentAddress: data.studentAddress
+      });
+
+      if (matchingTutors.length === 0) {
+        socket.emit('student:no-tutors-available', { requestId: data.requestId });
+        return;
+      }
+
+      // Store request for tracking
+      await matchingService.storeStudentRequest(data.requestId, {
+        studentAddress: data.studentAddress,
+        studentSocketId: socket.id,
+        language: data.language,
+        budgetPerSecond: data.budgetPerSecond,
+        timestamp: Date.now()
+      });
+
+      // Notify matching tutors
+      let tutorsNotified = 0;
+      for (const tutor of matchingTutors) {
+        const tutorSocket = io.sockets.sockets.get(tutor.socketId);
+        if (tutorSocket) {
+          tutorSocket.emit('tutor:incoming-request', {
+            requestId: data.requestId,
+            student: {
+              address: data.studentAddress,
+              language: data.language,
+              budgetPerSecond: data.budgetPerSecond
+            }
+          });
+          tutorsNotified++;
+        }
+      }
+
+      socket.emit('student:request-sent', { 
+        requestId: data.requestId,
+        tutorsNotified 
+      });
+
+    } catch (error) {
+      console.error('Error processing student request:', error);
+      socket.emit('error', { message: 'Failed to process request' });
+    }
+  });
+
+  // Tutor accepts request
+  socket.on('tutor:accept-request', async (data) => {
+    try {
+      if (!checkSocketRateLimit(socket.id)) {
+        socket.emit('error', { message: 'Rate limit exceeded' });
+        return;
+      }
+
+      if (!data || !data.requestId || !data.tutorAddress) {
+        socket.emit('error', { message: 'Missing required fields' });
+        return;
+      }
+
+      const request = await matchingService.getStudentRequest(data.requestId);
+      if (!request) {
+        socket.emit('error', { message: 'Request not found or expired' });
+        return;
+      }
+
+      // Notify student
+      const studentSocket = io.sockets.sockets.get(request.studentSocketId);
+      if (studentSocket) {
+        studentSocket.emit('student:tutor-accepted', {
           requestId: data.requestId,
+          tutor: {
+            address: data.tutorAddress,
+            socketId: socket.id
+          }
         });
       }
+
+      // Clean up request
+      await matchingService.removeStudentRequest(data.requestId);
+      
+      socket.emit('tutor:request-accepted', { requestId: data.requestId });
+
     } catch (error) {
-      console.error("Error processing student request:", error);
-      socket.emit("error", { message: "Failed to process tutor request" });
+      console.error('Error accepting request:', error);
+      socket.emit('error', { message: 'Failed to accept request' });
     }
   });
 
-  // Handle tutor responses
-  socket.on("tutor:respond-to-request", (data) => {
-    console.log("socket.on(tutor:respond-to-request)::data", data);
-    // const studentSocketId = matchingService.getStudentSocketId(data.requestId);
-    const studentSocketId = data.requestId;
-    console.log(
-      "socket.on(tutor:respond-to-request)::studentSocketId",
-      studentSocketId
-    );
-    if (studentSocketId) {
-      io.to(studentSocketId).emit("student:tutor-response", {
-        requestId: data.requestId,
-        tutor: data.tutor,
-        accepted: data.accepted,
-      });
-    }
-  });
-
-  // Handle student selection
-  socket.on("student:select-tutor", async (data) => {
+  // Tutor declines request
+  socket.on('tutor:decline-request', async (data) => {
     try {
-      console.log("socket.on(student:select-tutor)::data", data);
-      // Here we would trigger the smart contract transaction
-      const result = await contractService.startSession(data);
-      console.log("socket.on(student:select-tutor)::result", result);
-      socket.emit("student:session-started", result);
-
-      // Notify the selected tutor
-      const tutorSocketId = matchingService.getTutorSocketId(data.tutorAddress);
-      console.log(
-        "socket.on(student:select-tutor)::tutorSocketId",
-        tutorSocketId
-      );
-      if (tutorSocketId) {
-        io.to(tutorSocketId).emit("tutor:session-started", result);
+      if (!checkSocketRateLimit(socket.id)) {
+        socket.emit('error', { message: 'Rate limit exceeded' });
+        return;
       }
+
+      if (!data || !data.requestId) {
+        socket.emit('error', { message: 'Missing requestId' });
+        return;
+      }
+
+      socket.emit('tutor:request-declined', { requestId: data.requestId });
     } catch (error) {
-      socket.emit("error", { message: "Failed to start session" });
+      console.error('Error declining request:', error);
+      socket.emit('error', { message: 'Failed to decline request' });
     }
   });
 
   // Handle disconnection
-  socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
-    matchingService.handleDisconnection(socket.id);
+  socket.on('disconnect', async (reason) => {
+    console.log('Client disconnected:', socket.id, 'Reason:', reason);
+    
+    try {
+      // Remove tutor availability
+      await matchingService.removeTutorAvailable(socket.id);
+      
+      // Clean up rate limiting in Redis
+      await redisClient.del(`rate_limit:${socket.id}`);
+      
+      // Broadcast update
+      io.emit('tutor:available-updated', { 
+        action: 'removed',
+        socketId: socket.id 
+      });
+    } catch (error) {
+      console.error('Error handling disconnect:', error);
+    }
   });
 });
 
-const PORT = process.env.PORT || 3001;
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+  console.log(`Received ${signal}. Starting graceful shutdown...`);
+  
+  try {
+    // Clean up matching service and Redis connections
+    await matchingService.cleanup();
+    
+    // Close Redis client connection
+    if (redisClient.isOpen) {
+      await redisClient.quit();
+      console.log('Redis connection closed');
+    }
+  } catch (error) {
+    console.error('Error during cleanup:', error);
+  }
+  
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+  
+  // Force close after 10 seconds
+  setTimeout(() => {
+    console.log('Forcing shutdown');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Start server
 server.listen(PORT, () => {
-  console.log(`LangDAO Backend running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} in ${NODE_ENV} mode`);
+  console.log(`CORS origin: ${CORS_ORIGIN}`);
 });
+
+module.exports = { app, server, io };

@@ -1,4 +1,26 @@
 const { ethers } = require("ethers");
+const redis = require('redis');
+
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  retry_delay_on_failure: 100,
+  socket: {
+    connectTimeout: 60000,
+    lazyConnect: true
+  }
+});
+
+redisClient.on('error', (err) => console.error('Redis error:', err));
+redisClient.on('connect', () => console.log('Contract service connected to Redis'));
+
+// Initialize connection
+(async () => {
+  try {
+    await redisClient.connect();
+  } catch (error) {
+    console.error('Failed to connect to Redis in contract service:', error);
+  }
+})();
 
 class ContractService {
   constructor() {
@@ -337,10 +359,18 @@ class ContractService {
         sessionCount: sessionCount.toString(),
         isRegistered,
       };
-    } catch (error) {
-      console.error("Failed to get tutor info:", error);
-      throw error;
+    }catch (error) {
+    console.error('Error getting tutor info:', error);
+    
+    // ✅ Differentiate between RPC errors and contract errors
+    if (error.message.includes('timeout') || error.message.includes('network')) {
+      throw new Error('Blockchain temporarily unavailable');
+    } else if (error.message.includes('revert') || error.message.includes('invalid address')) {
+      throw new Error('Invalid tutor address or not registered');
+    } else {
+      throw new Error('Failed to fetch tutor information');
     }
+  }
   }
 
   /**

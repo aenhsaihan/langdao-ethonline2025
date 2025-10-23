@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangDAO Backend Test Client</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .flex {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 LangDAO Backend Test Client</h1>
+        <p>Test the LangDAO backend API and Socket.IO functionality</p>
+        
+        <!-- Connection Status -->
+        <div class="section">
+            <h3>🔌 Connection Status</h3>
+            <div id="connectionStatus" class="status info">Disconnected</div>
+            <div class="flex">
+                <input type="text" id="serverUrl" value="http://localhost:4000" placeholder="Server URL">
+                <button onclick="connect()">Connect</button>
+                <button onclick="disconnect()">Disconnect</button>
+                <button onclick="checkHealth()">Health Check</button>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Tutor Section -->
+            <div class="section">
+                <h3>👨‍🏫 Tutor Functions</h3>
+                <div class="flex">
+                    <input type="text" id="tutorAddress" placeholder="Tutor Address" value="0x1234567890123456789012345678901234567890">
+                    <select id="tutorLanguage">
+                        <option value="english">English</option>
+                        <option value="spanish">Spanish</option>
+                        <option value="french">French</option>
+                        <option value="german">German</option>
+                        <option value="mandarin">Mandarin</option>
+                    </select>
+                </div>
+                <div class="flex">
+                    <input type="number" id="tutorRate" placeholder="Rate per second" value="0.001" step="0.001">
+                    <button onclick="setTutorAvailable()">Set Available</button>
+                    <button onclick="getTutorInfo()">Get Info</button>
+                </div>
+            </div>
+
+            <!-- Student Section -->
+            <div class="section">
+                <h3>👨‍🎓 Student Functions</h3>
+                <div class="flex">
+                    <input type="text" id="studentAddress" placeholder="Student Address" value="0x0987654321098765432109876543210987654321">
+                    <select id="studentLanguage">
+                        <option value="english">English</option>
+                        <option value="spanish">Spanish</option>
+                        <option value="french">French</option>
+                        <option value="german">German</option>
+                        <option value="mandarin">Mandarin</option>
+                    </select>
+                </div>
+                <div class="flex">
+                    <input type="number" id="studentBudget" placeholder="Budget per second" value="0.002" step="0.001">
+                    <input type="text" id="requestId" placeholder="Request ID" value="">
+                    <button onclick="generateRequestId()">Generate ID</button>
+                </div>
+                <div class="flex">
+                    <button onclick="requestTutor()">Request Tutor</button>
+                    <button onclick="getStudentInfo()">Get Info</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Testing Section -->
+        <div class="section">
+            <h3>🔧 API Testing</h3>
+            <div class="flex">
+                <button onclick="getAvailableTutors()">Get Available Tutors</button>
+                <button onclick="getMatchingStats()">Get Matching Stats</button>
+                <button onclick="findMatchingTutors()">Find Matching Tutors</button>
+            </div>
+        </div>
+
+        <!-- Socket Events -->
+        <div class="section">
+            <h3>📡 Socket Events</h3>
+            <div class="flex">
+                <button onclick="acceptRequest()">Accept Request (Tutor)</button>
+                <button onclick="declineRequest()">Decline Request (Tutor)</button>
+                <button onclick="clearLogs()">Clear Logs</button>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="section">
+            <h3>📋 Event Logs</h3>
+            <div id="logs" class="log">Ready to start testing...\n</div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentRequestId = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('logs');
+            const colorMap = {
+                'info': '#0066cc',
+                'success': '#009900',
+                'error': '#cc0000',
+                'warning': '#ff9900'
+            };
+            logElement.innerHTML += `<span style="color: ${colorMap[type]}">[${timestamp}] ${message}</span>\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = 'Logs cleared...\n';
+        }
+
+        function updateConnectionStatus(status, type = 'info') {
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.textContent = status;
+            statusElement.className = `status ${type}`;
+        }
+
+        function generateRequestId() {
+            const id = 'req_' + Math.random().toString(36).substr(2, 9);
+            document.getElementById('requestId').value = id;
+            log(`Generated request ID: ${id}`, 'info');
+        }
+
+        async function checkHealth() {
+            try {
+                const serverUrl = document.getElementById('serverUrl').value;
+                const response = await fetch(`${serverUrl}/health`);
+                const data = await response.json();
+                log(`Health check: ${JSON.stringify(data)}`, 'success');
+            } catch (error) {
+                log(`Health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            if (socket) {
+                socket.disconnect();
+            }
+
+            socket = io(serverUrl, {
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                updateConnectionStatus(`Connected to ${serverUrl}`, 'success');
+                log(`Connected to server with socket ID: ${socket.id}`, 'success');
+            });
+
+            socket.on('disconnect', (reason) => {
+                updateConnectionStatus(`Disconnected: ${reason}`, 'error');
+                log(`Disconnected: ${reason}`, 'warning');
+            });
+
+            socket.on('error', (error) => {
+                log(`Socket error: ${JSON.stringify(error)}`, 'error');
+            });
+
+            // Tutor events
+            socket.on('tutor:availability-set', (data) => {
+                log(`Tutor availability set: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('tutor:available-updated', (data) => {
+                log(`Tutor availability updated: ${JSON.stringify(data)}`, 'info');
+            });
+
+            socket.on('tutor:incoming-request', (data) => {
+                log(`Incoming tutor request: ${JSON.stringify(data)}`, 'info');
+                currentRequestId = data.requestId;
+            });
+
+            socket.on('tutor:request-accepted', (data) => {
+                log(`Request accepted: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('tutor:request-declined', (data) => {
+                log(`Request declined: ${JSON.stringify(data)}`, 'warning');
+            });
+
+            // Student events
+            socket.on('student:request-sent', (data) => {
+                log(`Student request sent: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('student:no-tutors-available', (data) => {
+                log(`No tutors available: ${JSON.stringify(data)}`, 'warning');
+            });
+
+            socket.on('student:tutor-accepted', (data) => {
+                log(`Tutor accepted your request: ${JSON.stringify(data)}`, 'success');
+            });
+
+            socket.on('connect_error', (error) => {
+                updateConnectionStatus(`Connection failed: ${error.message}`, 'error');
+                log(`Connection error: ${error.message}`, 'error');
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            updateConnectionStatus('Disconnected', 'info');
+        }
+
+        function setTutorAvailable() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const data = {
+                address: document.getElementById('tutorAddress').value,
+                language: document.getElementById('tutorLanguage').value,
+                ratePerSecond: parseFloat(document.getElementById('tutorRate').value)
+            };
+
+            log(`Setting tutor available: ${JSON.stringify(data)}`, 'info');
+            socket.emit('tutor:set-available', data);
+        }
+
+        function requestTutor() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            let requestId = document.getElementById('requestId').value;
+            if (!requestId) {
+                generateRequestId();
+                requestId = document.getElementById('requestId').value;
+            }
+
+            const data = {
+                requestId: requestId,
+                studentAddress: document.getElementById('studentAddress').value,
+                language: document.getElementById('studentLanguage').value,
+                budgetPerSecond: parseFloat(document.getElementById('studentBudget').value)
+            };
+
+            log(`Requesting tutor: ${JSON.stringify(data)}`, 'info');
+            socket.emit('student:request-tutor', data);
+        }
+
+        function acceptRequest() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const requestId = currentRequestId || document.getElementById('requestId').value;
+            if (!requestId) {
+                log('No request ID available', 'error');
+                return;
+            }
+
+            const data = {
+                requestId: requestId,
+                tutorAddress: document.getElementById('tutorAddress').value
+            };
+
+            log(`Accepting request: ${JSON.stringify(data)}`, 'info');
+            socket.emit('tutor:accept-request', data);
+        }
+
+        function declineRequest() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const requestId = currentRequestId || document.getElementById('requestId').value;
+            if (!requestId) {
+                log('No request ID available', 'error');
+                return;
+            }
+
+            const data = { requestId: requestId };
+
+            log(`Declining request: ${JSON.stringify(data)}`, 'info');
+            socket.emit('tutor:decline-request', data);
+        }
+
+        async function apiRequest(endpoint, method = 'GET', body = null) {
+            try {
+                const serverUrl = document.getElementById('serverUrl').value;
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(`${serverUrl}/api${endpoint}`, options);
+                const data = await response.json();
+                log(`API ${method} ${endpoint}: ${JSON.stringify(data)}`, response.ok ? 'success' : 'error');
+                return data;
+            } catch (error) {
+                log(`API request failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function getAvailableTutors() {
+            await apiRequest('/tutors/available');
+        }
+
+        async function getMatchingStats() {
+            await apiRequest('/matching/stats');
+        }
+
+        async function findMatchingTutors() {
+            const body = {
+                language: document.getElementById('studentLanguage').value,
+                budgetPerSecond: parseFloat(document.getElementById('studentBudget').value),
+                studentAddress: document.getElementById('studentAddress').value
+            };
+            await apiRequest('/matching/find-tutors', 'POST', body);
+        }
+
+        async function getTutorInfo() {
+            const address = document.getElementById('tutorAddress').value;
+            await apiRequest(`/tutors/${address}`);
+        }
+
+        async function getStudentInfo() {
+            const address = document.getElementById('studentAddress').value;
+            await apiRequest(`/students/${address}`);
+        }
+
+        // Auto-generate request ID on page load
+        window.onload = function() {
+            generateRequestId();
+            log('Test client loaded. Click Connect to start testing.', 'info');
+        };
+    </script>
+</body>
+</html>

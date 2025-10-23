@@ -7,14 +7,15 @@ const contractService = require("../services/contractService");
  * GET /api/tutors/available
  * Get all currently available tutors
  */
-router.get("/available", (req, res) => {
+router.get("/available", async (req, res) => {
   try {
-    const availableTutors = matchingService.getAvailableTutors();
+    const availableTutors = await matchingService.getAvailableTutors();
     res.json({
       success: true,
       tutors: availableTutors,
     });
   } catch (error) {
+    console.error('Error getting available tutors:', error);
     res.status(500).json({
       success: false,
       error: "Failed to get available tutors",
@@ -47,10 +48,10 @@ router.get("/:address", async (req, res) => {
  * GET /api/tutors/:address/availability
  * Check if a specific tutor is available
  */
-router.get("/:address/availability", (req, res) => {
+router.get("/:address/availability", async (req, res) => {
   try {
     const { address } = req.params;
-    const tutor = matchingService.getTutorByAddress(address);
+    const tutor = await matchingService.getTutorByAddress(address);
 
     res.json({
       success: true,
@@ -58,6 +59,7 @@ router.get("/:address/availability", (req, res) => {
       tutor: tutor,
     });
   } catch (error) {
+    console.error('Error checking tutor availability:', error);
     res.status(500).json({
       success: false,
       error: "Failed to check tutor availability",

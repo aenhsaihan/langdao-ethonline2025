@@ -1,226 +1,345 @@
-const { v4: uuidv4 } = require("uuid");
-const contractService = require("./contractService");
+const contractService = require('./contractService');
+const redis = require('redis');
 
-class MatchingService {
-  constructor() {
-    // In-memory storage (in production, use Redis)
-    this.availableTutors = new Map(); // socketId -> tutor data
-    this.studentRequests = new Map(); // requestId -> request data
-    this.socketToUser = new Map(); // socketId -> user type and address
+// Redis client configuration
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  retry_delay_on_failure: 100,
+  socket: {
+    connectTimeout: 60000,
+    lazyConnect: true
   }
+});
 
-  /**
-   * Set tutor as available
-   * @param {string} socketId - WebSocket connection ID
-   * @param {Object} tutorData - Tutor information
-   */
-  async setTutorAvailable(socketId, tutorData) {
-    try {
-      // Validate tutor is registered on contract
-      const tutorInfo = await contractService.getTutorInfo(tutorData.address);
-      if (!tutorInfo.isRegistered) {
-        throw new Error("Tutor not registered on contract");
-      }
+redisClient.on('error', (err) => console.error('Redis error:', err));
+redisClient.on('connect', () => console.log('Connected to Redis'));
+redisClient.on('ready', () => console.log('Redis client ready'));
+redisClient.on('end', () => console.log('Redis connection ended'));
 
-      // Check if tutor has an active session
-      const activeSession = await contractService.getActiveSession(
-        tutorData.address
-      );
-      if (activeSession) {
-        throw new Error("Tutor already has an active session");
-      }
+// Initialize connection
+(async () => {
+  try {
+    await redisClient.connect();
+    console.log('Redis connection initialized');
+  } catch (error) {
+    console.error('Failed to connect to Redis:', error);
+  }
+})();
 
-      const tutor = {
-        socketId,
-        address: tutorData.address,
-        languages: tutorData.languages, // Array of language IDs
-        rates: tutorData.rates, // Object mapping language -> rate per second
-        isAvailable: true,
-        lastSeen: Date.now(),
-        totalEarnings: tutorInfo.totalEarnings,
-        sessionCount: tutorInfo.sessionCount,
-      };
+// Configuration
+const TUTOR_AVAILABILITY_TTL = parseInt(process.env.TUTOR_AVAILABILITY_TTL || '300'); // 5 minutes in seconds
+const REQUEST_TTL = parseInt(process.env.REQUEST_TTL || '60'); // 1 minute in seconds
 
-      this.availableTutors.set(socketId, tutor);
-      this.socketToUser.set(socketId, {
-        type: "tutor",
-        address: tutorData.address,
-      });
-
-      console.log(`Tutor ${tutorData.address} is now available`);
-    } catch (error) {
-      console.error(`Failed to set tutor available: ${error.message}`);
-      throw error;
+/**
+ * Set a tutor as available for matching
+ */
+async function setTutorAvailable(socketId, tutorData) {
+  try {
+    const { address, language, ratePerSecond } = tutorData;
+    
+    // Validate input
+    if (!address || !language || typeof ratePerSecond === 'undefined') {
+      return { success: false, error: 'Missing required fields' };
     }
-  }
 
-  /**
-   * Set tutor as unavailable
-   * @param {string} socketId - WebSocket connection ID
-   */
-  setTutorUnavailable(socketId) {
-    this.availableTutors.delete(socketId);
-    this.socketToUser.delete(socketId);
-    console.log(`Tutor ${socketId} is now unavailable`);
-  }
+    // Verify tutor exists on-chain
+    const tutorInfo = await contractService.getTutorInfo(address);
+    if (!tutorInfo || !tutorInfo.isRegistered) {
+      return { success: false, error: 'Tutor not registered on-chain' };
+    }
 
-  /**
-   * Find tutors that match student requirements
-   * @param {Object} studentRequest - Student request data
-   * @returns {Array} Array of matching tutors
-   */
-  async findMatchingTutors(studentRequest) {
-    const { language, budgetPerSecond, studentAddress } = studentRequest;
-    console.log("findMatchingTutors called with:", {
+    // Check for active session
+    const activeSession = await contractService.getActiveSession(address);
+    if (activeSession && activeSession.isActive) {
+      return { success: false, error: 'Tutor has an active session' };
+    }
+
+    // Verify tutor teaches the language
+    const tutorLanguages = await contractService.getTutorLanguages(address);
+    if (!tutorLanguages || !tutorLanguages.includes(language)) {
+      return { success: false, error: 'Tutor does not teach this language' };
+    }
+
+    // Get tutor's rate from contract
+    const contractRate = await contractService.getTutorRate(address);
+    if (Number(ratePerSecond) !== Number(contractRate)) {
+      return { success: false, error: 'Rate mismatch with contract' };
+    }
+
+    const tutor = {
+      socketId,
+      address: address.toLowerCase(),
       language,
-      budgetPerSecond,
-      studentAddress,
-    });
+      ratePerSecond: Number(ratePerSecond),
+      timestamp: Date.now(),
+      ...tutorInfo
+    };
 
-    if (!studentAddress) {
-      console.error("studentAddress is null/undefined in findMatchingTutors");
+    // Store tutor data with TTL
+    await redisClient.setEx(
+      `tutor:${socketId}`,
+      TUTOR_AVAILABILITY_TTL,
+      JSON.stringify(tutor)
+    );
+
+    // Store socket-to-user mapping
+    await redisClient.setEx(
+      `user:${socketId}`,
+      TUTOR_AVAILABILITY_TTL,
+      JSON.stringify({ type: 'tutor', address: address.toLowerCase() })
+    );
+
+    // Add to language-specific set for efficient querying
+    await redisClient.sAdd(`tutors:lang:${language}`, socketId);
+    await redisClient.expire(`tutors:lang:${language}`, TUTOR_AVAILABILITY_TTL);
+    
+    return { success: true, tutor };
+  } catch (error) {
+    console.error('Error setting tutor availability:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Remove a tutor from availability
+ */
+async function removeTutorAvailable(socketId) {
+  try {
+    // Get tutor data before deletion
+    const tutorData = await redisClient.get(`tutor:${socketId}`);
+    
+    if (tutorData) {
+      const tutor = JSON.parse(tutorData);
+      
+      // Remove from language-specific set
+      await redisClient.sRem(`tutors:lang:${tutor.language}`, socketId);
+    }
+
+    // Delete tutor data
+    await redisClient.del(`tutor:${socketId}`);
+    
+    // Delete user mapping
+    await redisClient.del(`user:${socketId}`);
+    
+    return true;
+  } catch (error) {
+    console.error('Error removing tutor availability:', error);
+    return false;
+  }
+}
+
+/**
+ * Find tutors matching student criteria
+ */
+async function findMatchingTutors({ language, budgetPerSecond, studentAddress }) {
+  try {
+    if (!language || typeof budgetPerSecond === 'undefined') {
+      return [];
+    }
+
+    const budget = Number(budgetPerSecond);
+    if (!Number.isFinite(budget) || budget <= 0) {
+      return [];
+    }
+
+    // Get all tutors for the requested language
+    const tutorSocketIds = await redisClient.sMembers(`tutors:lang:${language}`);
+    
+    if (!tutorSocketIds || tutorSocketIds.length === 0) {
       return [];
     }
 
     const matchingTutors = [];
-
-    for (const [socketId, tutor] of this.availableTutors) {
-      try {
-        console.log("Checking tutor:", tutor.address);
-        // Check if tutor teaches the requested language on contract
-        const teachesLanguage = await contractService.getTutorLanguage(
-          tutor.address,
-          language
-        );
-        if (!teachesLanguage) {
-          console.log("Tutor does not teach the requested language");
-          continue;
-        }
-        console.log("Tutor teaches the requested language");
-
-        // Get tutor's rate from contract
-        const tutorRate = await contractService.getTutorRate(
-          tutor.address,
-          language
-        );
-        // if (parseInt(tutorRate) > parseInt(budgetPerSecond)) {
-        //   console.log("Tutor's rate is higher than the student's budget");
-        //   console.log("Tutor's rate:", tutorRate);
-        //   console.log("Student's budget:", budgetPerSecond);
-        //   continue;
-        // }
-        // console.log("Tutor's rate is within the student's budget");
-
-        // Check if student can afford this tutor
-        const canAfford = await contractService.canAffordRate(
-          studentAddress,
-          tutor.address
-        );
-        if (!canAfford) {
-          console.log("Student cannot afford the tutor's rate");
-          continue;
-        }
-        console.log("Student can afford the tutor's rate");
-
-        matchingTutors.push({
-          socketId: tutor.socketId,
-          address: tutor.address,
-          rate: tutorRate,
-          languages: tutor.languages,
-          totalEarnings: tutor.totalEarnings,
-          sessionCount: tutor.sessionCount,
-        });
-        console.log("Matching tutor found:", matchingTutors);
-      } catch (error) {
-        console.error(`Error checking tutor ${tutor.address}:`, error);
+    
+    // Fetch and filter tutors
+    for (const socketId of tutorSocketIds) {
+      const tutorData = await redisClient.get(`tutor:${socketId}`);
+      
+      if (!tutorData) {
+        // Clean up stale reference
+        await redisClient.sRem(`tutors:lang:${language}`, socketId);
         continue;
       }
+
+      const tutor = JSON.parse(tutorData);
+      
+      // Check budget constraint
+      if (tutor.ratePerSecond > budget) {
+        continue;
+      }
+      
+      // Verify student can afford this tutor
+      const canAfford = await contractService.canAffordRate(studentAddress, tutor.address);
+      if (!canAfford) {
+        continue;
+      }
+      
+      matchingTutors.push({
+        socketId: tutor.socketId,
+        address: tutor.address,
+        language: tutor.language,
+        ratePerSecond: tutor.ratePerSecond,
+        name: tutor.name || 'Unknown'
+      });
     }
 
     return matchingTutors;
+  } catch (error) {
+    console.error('Error finding matching tutors:', error);
+    return [];
   }
+}
 
-  /**
-   * Create a new student request
-   * @param {Object} requestData - Student request data
-   * @returns {string} Request ID
-   */
-  createStudentRequest(requestData) {
-    const requestId = uuidv4();
+/**
+ * Get all available tutors
+ */
+async function getAvailableTutors() {
+  try {
+    // Get all tutor keys
+    const tutorKeys = await redisClient.keys('tutor:*');
+    
+    if (!tutorKeys || tutorKeys.length === 0) {
+      return [];
+    }
+
+    const tutors = [];
+    
+    for (const key of tutorKeys) {
+      const tutorData = await redisClient.get(key);
+      
+      if (tutorData) {
+        const tutor = JSON.parse(tutorData);
+        tutors.push({
+          socketId: tutor.socketId,
+          address: tutor.address,
+          language: tutor.language,
+          ratePerSecond: tutor.ratePerSecond,
+          name: tutor.name || 'Unknown',
+          timestamp: tutor.timestamp
+        });
+      }
+    }
+
+    return tutors;
+  } catch (error) {
+    console.error('Error getting available tutors:', error);
+    return [];
+  }
+}
+
+/**
+ * Store a student request
+ */
+async function storeStudentRequest(requestId, requestData) {
+  try {
     const request = {
-      id: requestId,
-      studentAddress: requestData.studentAddress,
-      language: requestData.language,
-      budgetPerSecond: requestData.budgetPerSecond,
-      timestamp: Date.now(),
-      responses: [],
+      ...requestData,
+      timestamp: Date.now()
     };
-
-    this.studentRequests.set(requestId, request);
-    return requestId;
+    
+    await redisClient.setEx(
+      `request:${requestId}`,
+      REQUEST_TTL,
+      JSON.stringify(request)
+    );
+    
+    return true;
+  } catch (error) {
+    console.error('Error storing student request:', error);
+    return false;
   }
+}
 
-  /**
-   * Get student socket ID by request ID
-   * @param {string} requestId - Request ID
-   * @returns {string|null} Student socket ID
-   */
-  getStudentSocketId(requestId) {
-    // In a real implementation, you'd store this mapping
-    // For now, we'll need to track this differently
-    return null; // TODO: Implement proper mapping
-  }
-
-  /**
-   * Get tutor socket ID by address
-   * @param {string} tutorAddress - Tutor wallet address
-   * @returns {string|null} Tutor socket ID
-   */
-  getTutorSocketId(tutorAddress) {
-    for (const [socketId, tutor] of this.availableTutors) {
-      if (tutor.address.toLowerCase() === tutorAddress.toLowerCase()) {
-        return socketId;
-      }
+/**
+ * Get a student request
+ */
+async function getStudentRequest(requestId) {
+  try {
+    const requestData = await redisClient.get(`request:${requestId}`);
+    
+    if (!requestData) {
+      return null;
     }
-    return null;
-  }
-
-  /**
-   * Handle user disconnection
-   * @param {string} socketId - WebSocket connection ID
-   */
-  handleDisconnection(socketId) {
-    const user = this.socketToUser.get(socketId);
-
-    if (user && user.type === "tutor") {
-      this.setTutorUnavailable(socketId);
-    }
-
-    // Clean up any pending requests
-    this.socketToUser.delete(socketId);
-  }
-
-  /**
-   * Get all available tutors (for debugging/admin)
-   * @returns {Array} Array of available tutors
-   */
-  getAvailableTutors() {
-    return Array.from(this.availableTutors.values());
-  }
-
-  /**
-   * Get tutor by address
-   * @param {string} address - Tutor wallet address
-   * @returns {Object|null} Tutor data
-   */
-  getTutorByAddress(address) {
-    for (const tutor of this.availableTutors.values()) {
-      if (tutor.address.toLowerCase() === address.toLowerCase()) {
-        return tutor;
-      }
-    }
+    
+    return JSON.parse(requestData);
+  } catch (error) {
+    console.error('Error getting student request:', error);
     return null;
   }
 }
 
-module.exports = new MatchingService();
+/**
+ * Remove a student request
+ */
+async function removeStudentRequest(requestId) {
+  try {
+    const result = await redisClient.del(`request:${requestId}`);
+    return result > 0;
+  } catch (error) {
+    console.error('Error removing student request:', error);
+    return false;
+  }
+}
+
+/**
+ * Get a specific tutor by address
+ */
+async function getTutorByAddress(address) {
+  try {
+    const normalizedAddress = address.toLowerCase();
+    
+    // Get all tutor keys
+    const tutorKeys = await redisClient.keys('tutor:*');
+    
+    for (const key of tutorKeys) {
+      const tutorData = await redisClient.get(key);
+      
+      if (tutorData) {
+        const tutor = JSON.parse(tutorData);
+        if (tutor.address === normalizedAddress) {
+          return {
+            socketId: tutor.socketId,
+            address: tutor.address,
+            language: tutor.language,
+            ratePerSecond: tutor.ratePerSecond,
+            name: tutor.name || 'Unknown',
+            timestamp: tutor.timestamp
+          };
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting tutor by address:', error);
+    return null;
+  }
+}
+
+/**
+ * Cleanup function for graceful shutdown
+ */
+async function cleanup() {
+  try {
+    await redisClient.quit();
+    console.log('Redis connection closed');
+  } catch (error) {
+    console.error('Error closing Redis connection:', error);
+  }
+}
+
+// Handle process termination
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+
+module.exports = {
+  setTutorAvailable,
+  removeTutorAvailable,
+  findMatchingTutors,
+  getAvailableTutors,
+  getTutorByAddress,
+  storeStudentRequest,
+  getStudentRequest,
+  removeStudentRequest,
+  cleanup
+};
