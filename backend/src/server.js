@@ -161,34 +161,81 @@ async function checkSocketRateLimit(socketId) {
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  // Tutor sets availability
+  // Helper to bind socketId <-> tutor address in Redis
+  async function bindSocketToAddress(address) {
+    try {
+      // Save socketId on the tutor hash and a reverse map socket -> address
+      await redisClient.hSet(`tutor:${address}`, { socketId: socket.id });
+      await redisClient.hSet('socket_to_address', socket.id, address);
+    } catch (e) {
+      console.error('Failed to bind socket to address:', e);
+    }
+  }
+
+  // Helper to resolve address from socketId
+  async function getAddressForSocket() {
+    try {
+      return await redisClient.hGet('socket_to_address', socket.id);
+    } catch {
+      return null;
+    }
+  }
+
+  socket.on('tutor:setAvailable', async (payload, cb) => {
+    try {
+      // Rate limit
+      if (!(await checkSocketRateLimit(socket.id))) {
+        cb?.({ ok: false, error: 'Rate limit exceeded' });
+        return;
+      }
+
+      const { address, language, ratePerSecond } = payload || {};
+      if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) throw new Error('Invalid address');
+      if (!language || !String(language).trim()) throw new Error('language is required');
+      if (ratePerSecond === undefined || ratePerSecond === null) throw new Error('ratePerSecond is required');
+
+      const result = await matchingService.setTutorAvailable(address.toLowerCase(), String(language).trim(), ratePerSecond);
+      // Bind socket to this address
+      await bindSocketToAddress(address.toLowerCase());
+
+      cb?.({ ok: true, result });
+      // Broadcast an availability update
+      io.emit('tutor:available-updated', { action: 'added', tutor: { address: address.toLowerCase(), language, ratePerSecond } });
+    } catch (err) {
+      console.error('Error in tutor:setAvailable:', err);
+      cb?.({ ok: false, error: err.message });
+    }
+  });
+
+  // DEPRECATE the old event name, but keep it working by delegating to the new logic
   socket.on('tutor:set-available', async (data) => {
     try {
-      if (!checkSocketRateLimit(socket.id)) {
+      if (!(await checkSocketRateLimit(socket.id))) {
         socket.emit('error', { message: 'Rate limit exceeded' });
         return;
       }
 
-      // Validate input
       if (!data || !data.address || !data.language || typeof data.ratePerSecond === 'undefined') {
         socket.emit('error', { message: 'Missing required fields: address, language, ratePerSecond' });
         return;
       }
 
-      const result = await matchingService.setTutorAvailable(socket.id, {
-        address: data.address.toLowerCase(),
-        language: data.language,
-        ratePerSecond: data.ratePerSecond
-      });
+      const result = await matchingService.setTutorAvailable(
+        data.address.toLowerCase(),
+        String(data.language).trim(),
+        data.ratePerSecond
+      );
+
+      await bindSocketToAddress(data.address.toLowerCase());
 
       if (result.success) {
         socket.emit('tutor:availability-set', { success: true });
-        io.emit('tutor:available-updated', { 
+        io.emit('tutor:available-updated', {
           action: 'added',
-          tutor: result.tutor 
+          tutor: { address: data.address.toLowerCase(), language: data.language, ratePerSecond: data.ratePerSecond },
         });
       } else {
-        socket.emit('error', { message: result.error });
+        socket.emit('error', { message: result.error || 'Failed to set availability' });
       }
     } catch (error) {
       console.error('Error setting tutor availability:', error);
@@ -199,24 +246,24 @@ io.on('connection', (socket) => {
   // Student requests tutor
   socket.on('student:request-tutor', async (data) => {
     try {
-      if (!checkSocketRateLimit(socket.id)) {
+      if (!(await checkSocketRateLimit(socket.id))) {
         socket.emit('error', { message: 'Rate limit exceeded' });
         return;
       }
 
-      // Validate input
       if (!data || !data.requestId || !data.studentAddress || !data.language || typeof data.budgetPerSecond === 'undefined') {
         socket.emit('error', { message: 'Missing required fields' });
         return;
       }
 
-      const matchingTutors = await matchingService.findMatchingTutors({
+      const result = await matchingService.findMatchingTutors({
         language: data.language,
         budgetPerSecond: data.budgetPerSecond,
-        studentAddress: data.studentAddress
+        studentAddress: data.studentAddress,
       });
 
-      if (matchingTutors.length === 0) {
+      const tutors = (result && Array.isArray(result.tutors)) ? result.tutors : [];
+      if (tutors.length === 0) {
         socket.emit('student:no-tutors-available', { requestId: data.requestId });
         return;
       }
@@ -227,31 +274,31 @@ io.on('connection', (socket) => {
         studentSocketId: socket.id,
         language: data.language,
         budgetPerSecond: data.budgetPerSecond,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
-      // Notify matching tutors
+      // Notify matching tutors (fetch socketId from tutor hash)
       let tutorsNotified = 0;
-      for (const tutor of matchingTutors) {
-        const tutorSocket = io.sockets.sockets.get(tutor.socketId);
-        if (tutorSocket) {
-          tutorSocket.emit('tutor:incoming-request', {
+      for (const tutor of tutors) {
+        const tutorHash = await redisClient.hGetAll(`tutor:${tutor.address.toLowerCase()}`);
+        const tutorSocketId = tutorHash?.socketId;
+        if (tutorSocketId && io.sockets.sockets.get(tutorSocketId)) {
+          io.to(tutorSocketId).emit('tutor:incoming-request', {
             requestId: data.requestId,
             student: {
               address: data.studentAddress,
               language: data.language,
-              budgetPerSecond: data.budgetPerSecond
-            }
+              budgetPerSecond: data.budgetPerSecond,
+            },
           });
           tutorsNotified++;
         }
       }
 
-      socket.emit('student:request-sent', { 
+      socket.emit('student:request-sent', {
         requestId: data.requestId,
-        tutorsNotified 
+        tutorsNotified,
       });
-
     } catch (error) {
       console.error('Error processing student request:', error);
       socket.emit('error', { message: 'Failed to process request' });
@@ -261,7 +308,7 @@ io.on('connection', (socket) => {
   // Tutor accepts request
   socket.on('tutor:accept-request', async (data) => {
     try {
-      if (!checkSocketRateLimit(socket.id)) {
+      if (!(await checkSocketRateLimit(socket.id))) {
         socket.emit('error', { message: 'Rate limit exceeded' });
         return;
       }
@@ -271,29 +318,26 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const request = await matchingService.getStudentRequest(data.requestId);
-      if (!request) {
+      const result = await matchingService.getStudentRequest(data.requestId);
+      if (!result?.success || !result.request) {
         socket.emit('error', { message: 'Request not found or expired' });
         return;
       }
+      const reqData = result.request;
+      const studentSocketId = reqData.studentSocketId;
 
-      // Notify student
-      const studentSocket = io.sockets.sockets.get(request.studentSocketId);
-      if (studentSocket) {
-        studentSocket.emit('student:tutor-accepted', {
+      if (studentSocketId && io.sockets.sockets.get(studentSocketId)) {
+        io.to(studentSocketId).emit('student:tutor-accepted', {
           requestId: data.requestId,
           tutor: {
-            address: data.tutorAddress,
-            socketId: socket.id
-          }
+            address: data.tutorAddress.toLowerCase(),
+            socketId: socket.id,
+          },
         });
       }
 
-      // Clean up request
       await matchingService.removeStudentRequest(data.requestId);
-      
       socket.emit('tutor:request-accepted', { requestId: data.requestId });
-
     } catch (error) {
       console.error('Error accepting request:', error);
       socket.emit('error', { message: 'Failed to accept request' });
@@ -303,7 +347,7 @@ io.on('connection', (socket) => {
   // Tutor declines request
   socket.on('tutor:decline-request', async (data) => {
     try {
-      if (!checkSocketRateLimit(socket.id)) {
+      if (!(await checkSocketRateLimit(socket.id))) {
         socket.emit('error', { message: 'Rate limit exceeded' });
         return;
       }
@@ -323,19 +367,21 @@ io.on('connection', (socket) => {
   // Handle disconnection
   socket.on('disconnect', async (reason) => {
     console.log('Client disconnected:', socket.id, 'Reason:', reason);
-    
+
     try {
-      // Remove tutor availability
-      await matchingService.removeTutorAvailable(socket.id);
-      
-      // Clean up rate limiting in Redis
+      const address = await getAddressForSocket();
+      if (address) {
+        await matchingService.removeTutorAvailable(address.toLowerCase());
+        await redisClient.hDel('socket_to_address', socket.id);
+        await redisClient.hSet(`tutor:${address.toLowerCase()}`, { socketId: '' });
+
+        io.emit('tutor:available-updated', {
+          action: 'removed',
+          address: address.toLowerCase(),
+        });
+      }
+
       await redisClient.del(`rate_limit:${socket.id}`);
-      
-      // Broadcast update
-      io.emit('tutor:available-updated', { 
-        action: 'removed',
-        socketId: socket.id 
-      });
     } catch (error) {
       console.error('Error handling disconnect:', error);
     }
