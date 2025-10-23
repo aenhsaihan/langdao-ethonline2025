@@ -14,6 +14,8 @@
     "flatten": "hardhat flatten",
     "fork": "MAINNET_FORKING_ENABLED=true hardhat node --network hardhat --no-deploy",
     "format": "prettier --write './**/*.(ts|sol)'",
+    "fund": "hardhat run scripts/fundWithMockERC20.ts",
+    "fund-and-approve": "hardhat run scripts/fundAndApprove.ts",
     "generate": "yarn account:generate",
     "hardhat-verify": "hardhat verify",
     "lint": "eslint",
