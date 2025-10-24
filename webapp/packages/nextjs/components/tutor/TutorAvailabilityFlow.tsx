@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useActiveAccount } from "thirdweb/react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { io, Socket } from "socket.io-client";
+import { Socket, io } from "socket.io-client";
+import { useActiveAccount } from "thirdweb/react";
 
 interface TutorAvailabilityFlowProps {
   onBack?: () => void;
@@ -47,7 +47,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     newSocket.on("connect", () => {
       setIsConnected(true);
       console.log("Tutor socket connected:", newSocket.id);
-      
+
       // Emit user info when connected
       newSocket.emit("user:connect", {
         address: account.address,
@@ -73,55 +73,70 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       setIncomingRequests([]);
     });
 
-    newSocket.on("error", (error) => {
+    newSocket.on("error", error => {
       console.error("Socket error:", error);
       toast.error(error.message || "Socket error occurred");
     });
 
-    newSocket.on("tutor:incoming-request", (data) => {
+    newSocket.on("tutor:incoming-request", data => {
       setIncomingRequests(prev => [...prev, data]);
-      toast((t: any) => (
-        <div className="flex flex-col space-y-2">
-          <div className="font-medium">New Student Request!</div>
-          <div className="text-sm text-gray-600">
-            Student wants to learn {data.language}
+      toast(
+        (t: any) => (
+          <div className="flex flex-col space-y-2">
+            <div className="font-medium">New Student Request!</div>
+            <div className="text-sm text-gray-600">Student wants to learn {data.language}</div>
+            <div className="text-sm text-gray-600">Budget: {data.budgetPerSecond} ETH/sec</div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  acceptRequest(data.requestId);
+                  toast.dismiss(t.id);
+                }}
+                className="px-3 py-1 bg-green-500 text-white rounded text-sm"
+              >
+                Accept
+              </button>
+              <button
+                onClick={() => {
+                  declineRequest(data.requestId);
+                  toast.dismiss(t.id);
+                }}
+                className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+              >
+                Decline
+              </button>
+            </div>
           </div>
-          <div className="text-sm text-gray-600">
-            Budget: {data.budgetPerSecond} ETH/sec
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => {
-                acceptRequest(data.requestId);
-                toast.dismiss(t.id);
-              }}
-              className="px-3 py-1 bg-green-500 text-white rounded text-sm"
-            >
-              Accept
-            </button>
-            <button
-              onClick={() => {
-                declineRequest(data.requestId);
-                toast.dismiss(t.id);
-              }}
-              className="px-3 py-1 bg-red-500 text-white rounded text-sm"
-            >
-              Decline
-            </button>
-          </div>
-        </div>
-      ), {
-        duration: 30000,
-        position: "top-right",
-      });
+        ),
+        {
+          duration: 30000,
+          position: "top-right",
+        },
+      );
     });
 
-    newSocket.on("tutor:request-accepted", (data) => {
+    newSocket.on("tutor:request-accepted", data => {
       console.log("Request accepted, waiting for student:", data);
       setCurrentSession(data);
       setAvailabilityState("waiting-for-student");
       setIncomingRequests([]);
       toast.success("Request accepted! Waiting for student to start session...");
+    });
+
+    newSocket.on("tutor:student-rejected", data => {
+      console.log("Student rejected or selected another tutor:", data);
+      setCurrentSession(null);
+      setAvailabilityState("waiting");
+      setIncomingRequests([]);
+      toast.info("Student rejected you or selected another tutor. Back to waiting for new requests.");
+    });
+
+    newSocket.on("tutor:student-selected", data => {
+      console.log("Student selected you for session:", data);
+      setCurrentSession(data);
+      setAvailabilityState("in-session");
+      setIncomingRequests([]);
+      toast.success("Student selected you! Session starting...");
     });
 
     setSocket(newSocket);
@@ -167,7 +182,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     console.log("Socket ID:", socket.id);
     console.log("Socket connected:", socket.connected);
     console.log("Emitting tutor:set-unavailable for address:", account?.address);
-    
+
     socket.emit("tutor:set-unavailable", {
       address: account?.address,
     });
@@ -220,20 +235,14 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   if (availabilityState === "setup") {
     return (
       <div className="min-h-[calc(100vh-8rem)] bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl w-full"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl w-full">
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border-2 border-gray-200 dark:border-gray-700 shadow-xl">
             {/* Header */}
             <div className="text-center mb-8">
               <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6">
                 <span className="text-3xl">👨‍🏫</span>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                Ready to Start Tutoring?
-              </h2>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to Start Tutoring?</h2>
               <p className="text-gray-600 dark:text-gray-300">
                 Set your language and rate, then go live to start earning!
               </p>
@@ -245,7 +254,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                 Language to Teach
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {languages.map((lang) => (
+                {languages.map(lang => (
                   <button
                     key={lang.value}
                     onClick={() => setLanguage(lang.value)}
@@ -256,9 +265,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                     }`}
                   >
                     <div className="text-2xl mb-1">{lang.flag}</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {lang.label}
-                    </div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{lang.label}</div>
                   </button>
                 ))}
               </div>
@@ -274,25 +281,19 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                   type="number"
                   step="0.0001"
                   value={ratePerSecond}
-                  onChange={(e) => setRatePerSecond(parseFloat(e.target.value) || 0)}
+                  onChange={e => setRatePerSecond(parseFloat(e.target.value) || 0)}
                   className="w-full p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
                   placeholder="0.001"
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">
-                  ETH/sec
-                </div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">ETH/sec</div>
               </div>
-              <div className="mt-2 text-sm text-gray-500">
-                ≈ {(ratePerSecond * 3600).toFixed(4)} ETH per hour
-              </div>
+              <div className="mt-2 text-sm text-gray-500">≈ {(ratePerSecond * 3600).toFixed(4)} ETH per hour</div>
             </div>
 
             {/* Connection Status */}
             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Server Connection
-                </span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Server Connection</span>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}></div>
                   <span className={`text-sm ${isConnected ? "text-green-600" : "text-red-600"}`}>
@@ -346,7 +347,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               >
                 <div className="w-full h-full rounded-full border-4 border-transparent border-t-green-500 border-r-green-400 opacity-80"></div>
               </motion.div>
-              
+
               {/* Inner rotating ring */}
               <motion.div
                 animate={{ rotate: -360 }}
@@ -355,18 +356,18 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               >
                 <div className="w-full h-full rounded-full border-3 border-transparent border-b-emerald-500 border-l-emerald-400 opacity-60"></div>
               </motion.div>
-              
+
               {/* Pulsing center */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     scale: [1, 1.2, 1],
-                    rotate: [0, 180, 360]
+                    rotate: [0, 180, 360],
                   }}
-                  transition={{ 
-                    duration: 3, 
+                  transition={{
+                    duration: 3,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: "easeInOut",
                   }}
                   className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg"
                 >
@@ -379,7 +380,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                   </motion.div>
                 </motion.div>
               </div>
-              
+
               {/* Floating particles */}
               {[...Array(6)].map((_, i) => (
                 <motion.div
@@ -402,10 +403,8 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               ))}
             </div>
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              You're Live! 🎉
-            </h2>
-            
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">You're Live! 🎉</h2>
+
             {/* Connection Status Debug */}
             <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
               <div>Socket ID: {socket?.id || "Not connected"}</div>
@@ -417,7 +416,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                 Teaching <span className="font-semibold text-green-600">{selectedLanguageData?.label}</span> at{" "}
                 <span className="font-semibold">{ratePerSecond} ETH/sec</span>
               </p>
-              
+
               {/* Earnings Preview */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
@@ -466,9 +465,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                 >
                   <div className="inline-flex items-center px-6 py-3 bg-green-100 dark:bg-green-900/30 rounded-full">
                     <div className="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse"></div>
-                    <span className="text-green-700 dark:text-green-300 font-medium">
-                      Waiting for students...
-                    </span>
+                    <span className="text-green-700 dark:text-green-300 font-medium">Waiting for students...</span>
                   </div>
                 </motion.div>
                 {[...Array(5)].map((_, i) => (
@@ -502,7 +499,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                     Incoming Requests ({incomingRequests.length})
                   </h3>
                   <div className="space-y-3">
-                    {incomingRequests.map((request) => (
+                    {incomingRequests.map(request => (
                       <motion.div
                         key={request.requestId}
                         initial={{ opacity: 0, x: -20 }}
@@ -510,9 +507,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                         className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800"
                       >
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-white">
-                            Student Request
-                          </div>
+                          <div className="font-medium text-gray-900 dark:text-white">Student Request</div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">
                             Budget: {request.budgetPerSecond} ETH/sec
                           </div>
@@ -547,7 +542,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                 <span className="mr-2">⏹️</span>
                 Stop Tutoring
               </button>
-              
+
               {/* Manual fallback button */}
               <button
                 onClick={() => {
@@ -578,9 +573,9 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border-2 border-gray-200 dark:border-gray-700 shadow-xl">
             {/* Animated waiting indicator */}
             <motion.div
-              animate={{ 
+              animate={{
                 scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0]
+                rotate: [0, 5, -5, 0],
               }}
               transition={{ duration: 2, repeat: Infinity }}
               className="w-20 h-20 mx-auto bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl flex items-center justify-center mb-6"
@@ -588,19 +583,17 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               <span className="text-3xl">⏳</span>
             </motion.div>
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Waiting for Student to Start 🎓
-            </h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Waiting for Student to Start 🎓</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
               You've accepted the request. The student is preparing to start the session.
             </p>
 
             <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-6 mb-8">
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
-                Request Accepted ✅
-              </div>
+              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">Request Accepted ✅</div>
               <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <div>Student: {currentSession?.studentAddress?.slice(0, 6)}...{currentSession?.studentAddress?.slice(-4)}</div>
+                <div>
+                  Student: {currentSession?.studentAddress?.slice(0, 6)}...{currentSession?.studentAddress?.slice(-4)}
+                </div>
                 <div>Language: {currentSession?.language}</div>
                 <div>Rate: {currentSession?.budgetPerSecond} ETH/sec</div>
               </div>
@@ -650,17 +643,13 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               <span className="text-3xl">📹</span>
             </div>
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Session in Progress! 🎓
-            </h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Session in Progress! 🎓</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
               You're currently teaching a student. Earnings are being tracked automatically.
             </p>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 mb-8">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                Session Active
-              </div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">Session Active</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Student: {currentSession?.studentAddress?.slice(0, 6)}...{currentSession?.studentAddress?.slice(-4)}
               </div>
