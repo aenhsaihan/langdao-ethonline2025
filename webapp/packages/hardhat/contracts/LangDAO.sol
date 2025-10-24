@@ -275,6 +275,7 @@ contract LangDAO {
         tutor.sessionCount++;
 
         // - Update session history
+        session.isActive = false;
         sessionHistory[session.id] = session;
 
         emit SessionEnded(session.id, session.tutor, duration, totalPayment);
