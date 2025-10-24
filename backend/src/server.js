@@ -384,6 +384,37 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Tutor withdraws their acceptance (goes back to waiting for students)
+  socket.on("tutor:withdraw-acceptance", async (data) => {
+    try {
+      console.log(`🎯 RECEIVED tutor:withdraw-acceptance from ${socket.id}:`, data);
+      
+      if (!(await checkSocketRateLimit(socket.id))) {
+        socket.emit("error", { message: "Rate limit exceeded" });
+        return;
+      }
+
+      if (!data || !data.requestId || !data.tutorAddress || !data.studentAddress) {
+        socket.emit("error", { message: "Missing required fields" });
+        return;
+      }
+
+      // Notify the student that the tutor withdrew their acceptance
+      console.log(`🎯 EMITTING tutor:withdrew-acceptance to student for request ${data.requestId}`);
+      io.emit("tutor:withdrew-acceptance", {
+        requestId: data.requestId,
+        tutorAddress: data.tutorAddress.toLowerCase(),
+        studentAddress: data.studentAddress.toLowerCase(),
+        message: "Tutor withdrew their acceptance and is back to waiting for students",
+      });
+
+      console.log(`✅ Tutor ${data.tutorAddress} withdrew acceptance for request ${data.requestId}`);
+    } catch (error) {
+      console.error("Error processing tutor withdrawal:", error);
+      socket.emit("error", { message: "Failed to process withdrawal" });
+    }
+  });
+
   // Student requests tutor
   socket.on("student:request-tutor", async (data) => {
     try {

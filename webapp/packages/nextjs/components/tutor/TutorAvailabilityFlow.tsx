@@ -641,6 +641,15 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
 
             <button
               onClick={() => {
+                // Notify the student that we're withdrawing our acceptance
+                if (socket && currentSession) {
+                  socket.emit("tutor:withdraw-acceptance", {
+                    requestId: currentSession.requestId,
+                    tutorAddress: account?.address,
+                    studentAddress: currentSession.studentAddress,
+                  });
+                }
+                
                 setAvailabilityState("waiting");
                 setCurrentSession(null);
                 toast("Returned to waiting for students");
