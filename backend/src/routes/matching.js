@@ -6,9 +6,9 @@ const matchingService = require("../services/matchingService");
  * POST /api/matching/find-tutors
  * Find tutors that match student requirements
  */
-router.post("/find-tutors", (req, res) => {
+router.post("/find-tutors", async (req, res) => {
   try {
-    const { language, budgetPerSecond } = req.body;
+    const { language, budgetPerSecond, studentAddress } = req.body;
 
     if (!language || !budgetPerSecond) {
       return res.status(400).json({
@@ -17,9 +17,10 @@ router.post("/find-tutors", (req, res) => {
       });
     }
 
-    const matchingTutors = matchingService.findMatchingTutors({
+    const matchingTutors = await matchingService.findMatchingTutors({
       language,
       budgetPerSecond,
+      studentAddress,
     });
 
     res.json({
@@ -28,6 +29,7 @@ router.post("/find-tutors", (req, res) => {
       count: matchingTutors.length,
     });
   } catch (error) {
+    console.error('Error finding tutors:', error);
     res.status(500).json({
       success: false,
       error: "Failed to find matching tutors",
@@ -39,23 +41,27 @@ router.post("/find-tutors", (req, res) => {
  * GET /api/matching/stats
  * Get matching system statistics
  */
-router.get("/stats", (req, res) => {
+router.get("/stats", async (req, res) => {
   try {
-    const availableTutors = matchingService.getAvailableTutors();
+    const availableTutors = await matchingService.getAvailableTutors();
+
+    // Group tutors by language
+    const tutorsByLanguage = availableTutors.reduce((acc, tutor) => {
+      if (tutor.language) {
+        acc[tutor.language] = (acc[tutor.language] || 0) + 1;
+      }
+      return acc;
+    }, {});
 
     res.json({
       success: true,
       stats: {
         totalAvailableTutors: availableTutors.length,
-        tutorsByLanguage: availableTutors.reduce((acc, tutor) => {
-          tutor.languages.forEach((lang) => {
-            acc[lang] = (acc[lang] || 0) + 1;
-          });
-          return acc;
-        }, {}),
+        tutorsByLanguage,
       },
     });
   } catch (error) {
+    console.error('Error getting stats:', error);
     res.status(500).json({
       success: false,
       error: "Failed to get matching stats",
