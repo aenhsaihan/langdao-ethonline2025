@@ -166,6 +166,7 @@ async function getAvailableTutors() {
   try {
     const tutorAddresses = await redisClient.sMembers('available_tutors');
     
+    // never hit? 
     if (!tutorAddresses || tutorAddresses.length === 0) {
       return { success: true, tutors: [], message: 'No tutors currently available' };
     }
@@ -183,9 +184,7 @@ async function getAvailableTutors() {
           lastSeen: tutorData.lastSeen,
           contractData: tutorData.contractData ? JSON.parse(tutorData.contractData) : null
         });
-      }
-    }
-    
+      }}
     console.log(`✅ Retrieved ${tutors.length} available tutors`);
     return { success: true, tutors };
   } catch (error) {
@@ -208,7 +207,10 @@ async function storeStudentRequest(requestId, requestData) {
     await redisClient.hSet(`request:${requestId}`, requestWithTimestamp);
     await redisClient.expire(`request:${requestId}`, REQUEST_TTL);
     
-    console.log(`✅ Stored student request ${requestId}`);
+    // Add to pending requests set for easier tracking
+    await redisClient.sAdd('pending_requests', requestId);
+    
+    console.log(`✅ Stored student request ${requestId} for ${requestData.language}`);
     return { success: true };
   } catch (error) {
     console.error('Error storing student request:', error);
@@ -240,11 +242,65 @@ async function getStudentRequest(requestId) {
 async function removeStudentRequest(requestId) {
   try {
     await redisClient.del(`request:${requestId}`);
+    await redisClient.sRem('pending_requests', requestId);
     console.log(`✅ Removed student request ${requestId}`);
     return { success: true };
   } catch (error) {
     console.error('Error removing student request:', error);
     throw error;
+  }
+}
+
+/**
+ * Get all pending student requests that match a tutor's language and rate
+ */
+async function getPendingStudentRequests(language, tutorRatePerSecond) {
+  try {
+    // Get all pending request IDs from the set
+    const requestIds = await redisClient.sMembers('pending_requests');
+    
+    if (!requestIds || requestIds.length === 0) {
+      return [];
+    }
+    
+    const matchingRequests = [];
+    
+    for (const requestId of requestIds) {
+      const requestData = await redisClient.hGetAll(`request:${requestId}`);
+      
+      // Skip if request doesn't exist (expired) or not pending
+      if (!requestData || Object.keys(requestData).length === 0 || requestData.status !== 'pending') {
+        // Clean up stale reference
+        await redisClient.sRem('pending_requests', requestId);
+        continue;
+      }
+      
+      if (requestData.language === language) {
+        const studentBudget = parseFloat(requestData.budgetPerSecond);
+        const tutorRate = parseFloat(tutorRatePerSecond);
+        
+        // Only include if student's budget can afford this tutor
+        if (studentBudget >= tutorRate) {
+          matchingRequests.push({
+            requestId,
+            studentAddress: requestData.studentAddress,
+            studentSocketId: requestData.studentSocketId,
+            language: requestData.language,
+            budgetPerSecond: requestData.budgetPerSecond,
+            createdAt: requestData.createdAt,
+          });
+        }
+      }
+    }
+    
+    // Sort by creation time (oldest first)
+    matchingRequests.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    
+    console.log(`✅ Found ${matchingRequests.length} pending requests for ${language} at rate ${tutorRatePerSecond}`);
+    return matchingRequests;
+  } catch (error) {
+    console.error('Error getting pending student requests:', error);
+    return [];
   }
 }
 
@@ -302,6 +358,7 @@ module.exports = {
   storeStudentRequest,
   getStudentRequest,
   removeStudentRequest,
+  getPendingStudentRequests,
   cleanup,
   redisClient
 };

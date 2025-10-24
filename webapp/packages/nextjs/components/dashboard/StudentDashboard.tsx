@@ -6,6 +6,9 @@ import { formatUnits } from "viem";
 import { CONTRACTS } from "../../lib/constants/contracts";
 import { client } from "../../client";
 import { activeChain } from "../../lib/chains";
+// import { QuickActions } from "../socket/QuickActions";
+// import { StudentSocketEvents } from "../socket/StudentSocketEvents";
+// import { TutorSocketEvents } from "../socket/TutorSocketEvents";
 import deployedContracts from "~~/contracts/deployedContracts";
 
 interface StudentDashboardProps {
@@ -120,15 +123,26 @@ export const StudentDashboard = ({ onStartLearning, onAddFunds }: StudentDashboa
           </div>
         </div>
 
+        {/* Socket Integration - Temporarily Disabled */}
+        {/* 
+        <div className="mt-8">
+          <QuickActions />
+        </div>
+        <div className="mt-8 grid md:grid-cols-2 gap-6">
+          <StudentSocketEvents />
+          <TutorSocketEvents />
+        </div>
+        */}
+
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={onStartLearning}
-            className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 text-lg"
+          <a
+            href="/find-tutor"
+            className="inline-block px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 text-lg text-center"
           >
             <span className="mr-2">🚀</span>
             Find a Tutor
-          </button>
+          </a>
           <button 
             onClick={onAddFunds}
             className="px-8 py-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 text-lg"

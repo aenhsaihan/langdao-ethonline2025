@@ -8,12 +8,13 @@ import { StudentRegistration } from "./StudentRegistration";
 import { TutorRegistration } from "./TutorRegistration";
 import { DepositFlow } from "../deposit/DepositFlow";
 import { StudentDashboard } from "../dashboard/StudentDashboard";
+import { TutorAvailabilityFlow } from "../tutor/TutorAvailabilityFlow";
 import { CONTRACTS } from "../../lib/constants/contracts";
 import { client } from "../../client";
 import { activeChain } from "../../lib/chains";
 import deployedContracts from "~~/contracts/deployedContracts";
 
-type OnboardingStep = "role" | "registration" | "deposit" | "dashboard" | "complete";
+type OnboardingStep = "role" | "registration" | "deposit" | "dashboard" | "tutor-availability" | "complete";
 type UserRole = "student" | "tutor" | null;
 
 interface OnboardingFlowProps {
@@ -66,7 +67,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
       setIsCheckingRegistration(false);
     } else if (isTutorRegistered) {
       setSelectedRole("tutor");
-      setCurrentStep("complete"); // Tutors don't need deposit, go to complete
+      setCurrentStep("tutor-availability"); // Go to tutor availability flow
       setIsCheckingRegistration(false);
     } else {
       // Not registered, start with role selection
@@ -82,12 +83,11 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
 
   const handleRegistrationComplete = () => {
     // For students, go to deposit flow
-    // For tutors, complete onboarding (they don't need to deposit)
+    // For tutors, go to availability flow
     if (selectedRole === "student") {
       setCurrentStep("deposit");
     } else {
-      setCurrentStep("complete");
-      onComplete();
+      setCurrentStep("tutor-availability");
     }
   };
 
@@ -114,6 +114,15 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
         // Otherwise go back to registration
         if (selectedRole === "student" && (studentInfo && studentInfo[2])) {
           setCurrentStep("dashboard");
+        } else {
+          setCurrentStep("registration");
+        }
+        break;
+      case "tutor-availability":
+        // If tutor is already registered, they can go back to complete
+        // Otherwise go back to registration
+        if (selectedRole === "tutor" && (tutorInfo && tutorInfo[2])) {
+          setCurrentStep("complete");
         } else {
           setCurrentStep("registration");
         }
@@ -209,6 +218,12 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
           <StudentDashboard 
             onStartLearning={handleStartLearning} 
             onAddFunds={handleAddFunds}
+          />
+        )}
+
+        {currentStep === "tutor-availability" && (
+          <TutorAvailabilityFlow 
+            onBack={handleBack}
           />
         )}
       </div>

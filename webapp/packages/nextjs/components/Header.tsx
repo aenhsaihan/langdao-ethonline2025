@@ -9,6 +9,8 @@ import { client } from "../client";
 import { wallets } from "../wallets";
 import { activeChain } from "../lib/chains";
 import { SwitchTheme } from "./SwitchTheme";
+// import { ConnectionStatus } from "./socket/ConnectionStatus";
+// import { SocketNotifications } from "./socket/SocketNotifications";
 import { useOutsideClick } from "~~/hooks/scaffold-eth";
 import { usePageView } from "~~/hooks/usePageView";
 
@@ -23,12 +25,24 @@ const connectedMenuLinks: HeaderMenuLink[] = [
     href: "/",
   },
   {
+    label: "Find Tutor",
+    href: "/find-tutor",
+  },
+  {
+    label: "Tutor Mode",
+    href: "/tutor",
+  },
+  {
     label: "My Sessions",
     href: "/sessions",
   },
   {
     label: 'Schedule',
     href: '/schedule'
+  },
+  {
+    label: 'Socket Demo',
+    href: '/socket-demo'
   },
   {
     label: 'Debug',
@@ -145,12 +159,16 @@ export const Header = () => {
           <div className="flex items-center space-x-4">
             <SwitchTheme />
 
+            {/* {account && <ConnectionStatus />} */}
+
             {account && (
               <button className="relative p-2 text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white">
                 <BellIcon className="h-6 w-6" />
                 <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span>
               </button>
             )}
+
+            {/* {account && <SocketNotifications />} */}
 
             <ConnectButton 
               client={client} 

@@ -46,7 +46,7 @@ app.use(helmet({
 
 // CORS
 app.use(cors({
-  origin: CORS_ORIGIN,
+  origin: [CORS_ORIGIN, "null"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -130,7 +130,7 @@ app.use((err, req, res, next) => {
 // Socket.IO setup
 const io = socketIo(server, {
   cors: {
-    origin: CORS_ORIGIN,
+    origin: [CORS_ORIGIN, "null"],
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -198,7 +198,28 @@ io.on('connection', (socket) => {
       // Bind socket to this address
       await bindSocketToAddress(address.toLowerCase());
 
-      cb?.({ ok: true, result });
+      console.log(`Tutor ${address} now available for ${language}, checking for pending student requests...`);
+
+      // Check for pending student requests that match this tutor
+      const pendingRequests = await matchingService.getPendingStudentRequests(String(language).trim(), ratePerSecond);
+      
+      if (pendingRequests && pendingRequests.length > 0) {
+        console.log(`Found ${pendingRequests.length} pending requests for this tutor`);
+        
+        // Notify this tutor about all pending matching requests
+        for (const request of pendingRequests) {
+          socket.emit('tutor:incoming-request', {
+            requestId: request.requestId,
+            student: {
+              address: request.studentAddress,
+              language: request.language,
+              budgetPerSecond: request.budgetPerSecond,
+            },
+          });
+        }
+      }
+
+      cb?.({ ok: true, result, pendingRequests: pendingRequests?.length || 0 });
       // Broadcast an availability update
       io.emit('tutor:available-updated', { action: 'added', tutor: { address: address.toLowerCase(), language, ratePerSecond } });
     } catch (err) {
@@ -228,8 +249,29 @@ io.on('connection', (socket) => {
 
       await bindSocketToAddress(data.address.toLowerCase());
 
+      console.log(`Tutor ${data.address} now available for ${data.language}, checking for pending student requests...`);
+
+      // Check for pending student requests that match this tutor
+      const pendingRequests = await matchingService.getPendingStudentRequests(String(data.language).trim(), data.ratePerSecond);
+      
+      if (pendingRequests && pendingRequests.length > 0) {
+        console.log(`Found ${pendingRequests.length} pending requests for this tutor`);
+        
+        // Notify this tutor about all pending matching requests
+        for (const request of pendingRequests) {
+          socket.emit('tutor:incoming-request', {
+            requestId: request.requestId,
+            student: {
+              address: request.studentAddress,
+              language: request.language,
+              budgetPerSecond: request.budgetPerSecond,
+            },
+          });
+        }
+      }
+
       if (result.success) {
-        socket.emit('tutor:availability-set', { success: true });
+        socket.emit('tutor:availability-set', { success: true, pendingRequests: pendingRequests?.length || 0 });
         io.emit('tutor:available-updated', {
           action: 'added',
           tutor: { address: data.address.toLowerCase(), language: data.language, ratePerSecond: data.ratePerSecond },
@@ -240,6 +282,38 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error setting tutor availability:', error);
       socket.emit('error', { message: 'Failed to set availability' });
+    }
+  });
+
+  // Tutor sets unavailable
+  socket.on('tutor:set-unavailable', async (data) => {
+    try {
+      if (!(await checkSocketRateLimit(socket.id))) {
+        socket.emit('error', { message: 'Rate limit exceeded' });
+        return;
+      }
+
+      if (!data || !data.address) {
+        socket.emit('error', { message: 'Missing required field: address' });
+        return;
+      }
+
+      const result = await matchingService.removeTutorAvailable(data.address.toLowerCase());
+
+      if (result.success) {
+        socket.emit('tutor:availability-removed', { success: true });
+        // Broadcast that this tutor is no longer available
+        io.emit('tutor:available-updated', {
+          action: 'removed',
+          tutor: { address: data.address.toLowerCase() },
+        });
+        console.log(`Tutor ${data.address} set to unavailable`);
+      } else {
+        socket.emit('error', { message: result.error || 'Failed to remove availability' });
+      }
+    } catch (error) {
+      console.error('Error removing tutor availability:', error);
+      socket.emit('error', { message: 'Failed to remove availability' });
     }
   });
 
@@ -256,19 +330,7 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const result = await matchingService.findMatchingTutors({
-        language: data.language,
-        budgetPerSecond: data.budgetPerSecond,
-        studentAddress: data.studentAddress,
-      });
-
-      const tutors = (result && Array.isArray(result.tutors)) ? result.tutors : [];
-      if (tutors.length === 0) {
-        socket.emit('student:no-tutors-available', { requestId: data.requestId });
-        return;
-      }
-
-      // Store request for tracking
+      // Store request FIRST so it's available for tutors who come online later
       await matchingService.storeStudentRequest(data.requestId, {
         studentAddress: data.studentAddress,
         studentSocketId: socket.id,
@@ -277,6 +339,17 @@ io.on('connection', (socket) => {
         timestamp: Date.now(),
       });
 
+      console.log(`Student ${data.studentAddress} requesting tutor for ${data.language}, request stored: ${data.requestId}`);
+
+      // Find currently available tutors
+      const result = await matchingService.findMatchingTutors({
+        language: data.language,
+        budgetPerSecond: data.budgetPerSecond,
+        studentAddress: data.studentAddress,
+      });
+
+      const tutors = (result && Array.isArray(result.tutors)) ? result.tutors : [];
+      
       // Notify matching tutors (fetch socketId from tutor hash)
       let tutorsNotified = 0;
       for (const tutor of tutors) {
@@ -295,10 +368,21 @@ io.on('connection', (socket) => {
         }
       }
 
+      // Always confirm request was sent, even if no tutors available now
       socket.emit('student:request-sent', {
         requestId: data.requestId,
         tutorsNotified,
+        message: tutorsNotified === 0 
+          ? 'Request stored, will notify tutors when they come online' 
+          : `Notified ${tutorsNotified} available tutors`,
       });
+
+      if (tutorsNotified === 0) {
+        socket.emit('student:no-tutors-available', { 
+          requestId: data.requestId,
+          message: 'No tutors online yet, your request is active and will be sent to tutors when they come online',
+        });
+      }
     } catch (error) {
       console.error('Error processing student request:', error);
       socket.emit('error', { message: 'Failed to process request' });
@@ -326,18 +410,32 @@ io.on('connection', (socket) => {
       const reqData = result.request;
       const studentSocketId = reqData.studentSocketId;
 
+      // Get tutor info to send complete data to student
+      const tutorInfo = await matchingService.getTutorByAddress(data.tutorAddress.toLowerCase());
+      const tutorData = tutorInfo.success ? tutorInfo.tutor : null;
+
       if (studentSocketId && io.sockets.sockets.get(studentSocketId)) {
         io.to(studentSocketId).emit('student:tutor-accepted', {
           requestId: data.requestId,
-          tutor: {
-            address: data.tutorAddress.toLowerCase(),
-            socketId: socket.id,
-          },
+          tutorAddress: data.tutorAddress.toLowerCase(),
+          language: tutorData?.language || reqData.language,
+          ratePerSecond: tutorData?.ratePerSecond || 0,
+          socketId: socket.id,
         });
       }
 
+      // Remove the request from pending since it's been accepted
       await matchingService.removeStudentRequest(data.requestId);
-      socket.emit('tutor:request-accepted', { requestId: data.requestId });
+      
+      // Send confirmation to tutor with student info
+      socket.emit('tutor:request-accepted', { 
+        requestId: data.requestId,
+        studentAddress: reqData.studentAddress,
+        language: reqData.language,
+        budgetPerSecond: reqData.budgetPerSecond,
+      });
+      
+      console.log(`Tutor ${data.tutorAddress} accepted request ${data.requestId}`);
     } catch (error) {
       console.error('Error accepting request:', error);
       socket.emit('error', { message: 'Failed to accept request' });
@@ -361,6 +459,46 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Error declining request:', error);
       socket.emit('error', { message: 'Failed to decline request' });
+    }
+  });
+
+  // Student cancels request
+  socket.on('student:cancel-request', async (data) => {
+    try {
+      if (!(await checkSocketRateLimit(socket.id))) {
+        socket.emit('error', { message: 'Rate limit exceeded' });
+        return;
+      }
+
+      if (!data || !data.requestId || !data.studentAddress) {
+        socket.emit('error', { message: 'Missing required fields: requestId, studentAddress' });
+        return;
+      }
+
+      console.log(`Student ${data.studentAddress} cancelling request ${data.requestId}`);
+
+      // Remove the pending request from storage
+      const result = await matchingService.removeStudentRequest(data.requestId);
+      
+      if (result.success) {
+        socket.emit('student:request-cancelled', { 
+          requestId: data.requestId,
+          success: true,
+        });
+        
+        // Broadcast to all tutors that this request is cancelled
+        io.emit('student:request-cancelled-broadcast', {
+          requestId: data.requestId,
+          studentAddress: data.studentAddress,
+        });
+        
+        console.log(`Request ${data.requestId} cancelled and broadcast to all tutors`);
+      } else {
+        socket.emit('error', { message: result.error || 'Failed to cancel request' });
+      }
+    } catch (error) {
+      console.error('Error cancelling student request:', error);
+      socket.emit('error', { message: 'Failed to cancel request' });
     }
   });
 
