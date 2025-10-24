@@ -139,7 +139,8 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     });
 
     newSocket.on("tutor:student-selected", data => {
-      console.log("Student selected you for session:", data);
+      console.log("🎯 TUTOR RECEIVED tutor:student-selected:", data);
+      console.log("Current availability state:", availabilityState);
       setCurrentSession(data);
       setAvailabilityState("in-session");
       setIncomingRequests([]);

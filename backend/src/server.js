@@ -695,15 +695,20 @@ io.on("connection", (socket) => {
         `tutor:${data.tutorAddress.toLowerCase()}`
       );
       const acceptedTutorSocketId = acceptedTutorHash?.socketId;
+      console.log(`🎯 Looking for tutor ${data.tutorAddress.toLowerCase()}, socketId: ${acceptedTutorSocketId}`);
+      
       if (
         acceptedTutorSocketId &&
         io.sockets.sockets.get(acceptedTutorSocketId)
       ) {
+        console.log(`🎯 EMITTING tutor:student-selected to tutor ${data.tutorAddress.toLowerCase()}`);
         io.to(acceptedTutorSocketId).emit("tutor:student-selected", {
           requestId: data.requestId,
           studentAddress: data.studentAddress,
           message: "Student selected you! Session starting...",
         });
+      } else {
+        console.log(`🎯 Tutor ${data.tutorAddress.toLowerCase()} not found or not connected`);
       }
 
       // Remove the request from storage since it's been resolved
