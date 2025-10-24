@@ -355,18 +355,15 @@ io.on("connection", (socket) => {
         // Check if this tutor was in a session state (waiting to enter session)
         // If so, notify the student they were waiting for
         const tutorHash = await redisClient.hGetAll(`tutor:${data.address.toLowerCase()}`);
-        const wasInSession = tutorHash?.status === "waiting-to-enter-session";
+        console.log(`🎯 Tutor ${data.address.toLowerCase()} hash data:`, tutorHash);
         
-        if (wasInSession) {
-          // Tutor withdrew their acceptance - notify the student
-          console.log(`🎯 EMITTING tutor:withdrew-acceptance for tutor ${data.address.toLowerCase()}`);
-          io.emit("tutor:withdrew-acceptance", {
-            tutorAddress: data.address.toLowerCase(),
-            message: "Tutor withdrew their acceptance and is back to waiting for students",
-          });
-        } else {
-          console.log(`🎯 Tutor ${data.address.toLowerCase()} was not in session state, status: ${tutorHash?.status}`);
-        }
+        // For now, let's always emit the withdrawal event when a tutor becomes unavailable
+        // This handles the case where tutor withdraws their acceptance
+        console.log(`🎯 EMITTING tutor:withdrew-acceptance for tutor ${data.address.toLowerCase()}`);
+        io.emit("tutor:withdrew-acceptance", {
+          tutorAddress: data.address.toLowerCase(),
+          message: "Tutor withdrew their acceptance and is back to waiting for students",
+        });
         
         // Broadcast that this tutor is no longer available
         io.emit("tutor:available-updated", {
