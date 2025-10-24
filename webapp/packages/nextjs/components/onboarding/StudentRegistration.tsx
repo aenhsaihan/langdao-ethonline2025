@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseEther } from "viem";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
-import { LANGUAGES, CONTRACTS } from "../../lib/constants/contracts";
-import deployedContracts from "~~/contracts/deployedContracts";
+import { LANGUAGES } from "../../lib/constants/contracts";
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 interface StudentRegistrationProps {
   onComplete: () => void;
@@ -18,15 +16,13 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
   const [budgetPerHour, setBudgetPerHour] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { writeContract, data: hash, error, isPending } = useWriteContract();
-  
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
+  const { writeContractAsync, isMining } = useScaffoldWriteContract({
+    contractName: "LangDAO",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!targetLanguage || !budgetPerHour) {
       toast.error("Please fill in all fields");
       return;
@@ -35,37 +31,25 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
     const budgetPerSecond = Math.floor((parseFloat(budgetPerHour) / 3600) * 1e18); // Convert to wei per second
 
     setIsSubmitting(true);
-    
+
     try {
       // Call the registerStudent function from LangDAO contract
-      writeContract({
-        address: CONTRACTS.LANGDAO,
-        abi: deployedContracts[31337].LangDAO.abi,
+      await writeContractAsync({
         functionName: "registerStudent",
         args: [BigInt(targetLanguage), BigInt(budgetPerSecond)],
       });
+
+      toast.success("Registration successful!");
+      onComplete();
     } catch (err) {
       console.error("Registration error:", err);
       toast.error("Registration failed. Please try again.");
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle transaction success
-  useEffect(() => {
-    if (isSuccess) {
-      toast.success("Registration successful!");
-      onComplete();
-    }
-  }, [isSuccess, onComplete]);
 
-  // Handle transaction error
-  useEffect(() => {
-    if (error) {
-      toast.error("Transaction failed. Please try again.");
-      setIsSubmitting(false);
-    }
-  }, [error]);
 
   const selectedLanguageObj = LANGUAGES.find(lang => lang.id === targetLanguage);
 
@@ -158,13 +142,13 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
               </button>
               <button
                 type="submit"
-                disabled={!targetLanguage || !budgetPerHour || isPending || isConfirming}
+                disabled={!targetLanguage || !budgetPerHour || isSubmitting || isMining}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isPending || isConfirming ? (
+                {isSubmitting || isMining ? (
                   <div className="flex items-center justify-center">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    {isPending ? "Confirming..." : "Processing..."}
+                    {isSubmitting ? "Confirming..." : "Processing..."}
                   </div>
                 ) : (
                   "Register as Student"

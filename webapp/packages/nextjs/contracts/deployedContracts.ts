@@ -928,7 +928,7 @@ const deployedContracts = {
       deployedOnBlock: 1,
     },
     MockERC20: {
-      address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
       abi: [
         {
           inputs: [
@@ -1289,7 +1289,7 @@ const deployedContracts = {
         transfer: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
         transferFrom: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       },
-      deployedOnBlock: 5,
+      deployedOnBlock: 3,
     },
   },
 } as const;

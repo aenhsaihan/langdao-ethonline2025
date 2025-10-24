@@ -2,8 +2,8 @@ import deployedContracts from "../../contracts/deployedContracts";
 
 // Contract addresses
 export const CONTRACTS = {
-    // PYUSD token contract address (for future use)
-    PYUSD: "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8" as const, // Mainnet PYUSD
+    // PYUSD token contract address - uses MockERC20 for local development
+    PYUSD: deployedContracts[31337]?.MockERC20?.address as `0x${string}` || "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8" as const,
 
     // LangDAO contract address - automatically uses deployed contract
     LANGDAO: deployedContracts[31337]?.LangDAO?.address as `0x${string}` || "0x5FbDB2315678afecb367f032d93F642f64180aa3" as const,
