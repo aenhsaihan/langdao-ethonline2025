@@ -710,6 +710,8 @@ io.on("connection", (socket) => {
       );
       const acceptedTutorSocketId = acceptedTutorHash?.socketId;
       console.log(`🎯 Looking for tutor ${data.tutorAddress.toLowerCase()}, socketId: ${acceptedTutorSocketId}`);
+      console.log(`🎯 Tutor hash data:`, acceptedTutorHash);
+      console.log(`🎯 Available sockets:`, Array.from(io.sockets.sockets.keys()));
       
       if (
         acceptedTutorSocketId &&
@@ -723,6 +725,8 @@ io.on("connection", (socket) => {
         });
       } else {
         console.log(`🎯 Tutor ${data.tutorAddress.toLowerCase()} not found or not connected`);
+        console.log(`🎯 Socket ID exists: ${!!acceptedTutorSocketId}`);
+        console.log(`🎯 Socket is connected: ${acceptedTutorSocketId ? !!io.sockets.sockets.get(acceptedTutorSocketId) : false}`);
       }
 
       // Remove the request from storage since it's been resolved
