@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { Socket, io } from "socket.io-client";
 import { useActiveAccount } from "thirdweb/react";
+import { useSocket } from "../../lib/socket/socketContext";
 
 interface TutorAvailabilityFlowProps {
   onBack?: () => void;
@@ -14,8 +14,7 @@ type AvailabilityState = "setup" | "waiting" | "waiting-for-student" | "in-sessi
 
 export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ onBack }) => {
   const account = useActiveAccount();
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const { socket, isConnected, on, off, emit } = useSocket();
   const [availabilityState, setAvailabilityState] = useState<AvailabilityState>("setup");
   const [language, setLanguage] = useState("english");
   const [ratePerSecond, setRatePerSecond] = useState(0.001);
@@ -36,39 +35,19 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     { value: "russian", label: "Russian", flag: "🇷🇺" },
   ];
 
-  // Socket connection
+  // Socket event listeners
   useEffect(() => {
-    if (!account?.address) return;
+    if (!socket || !account?.address) return;
 
-    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000", {
-      transports: ["websocket", "polling"],
-      autoConnect: true,
-    });
-
-    newSocket.on("connect", () => {
-      setIsConnected(true);
-      console.log("Tutor socket connected:", newSocket.id);
-
-      // Emit user info when connected
-      newSocket.emit("user:connect", {
-        address: account.address,
-        role: "tutor",
-        timestamp: Date.now(),
-      });
-    });
-
-    newSocket.on("disconnect", () => {
-      setIsConnected(false);
-      setAvailabilityState("setup");
-    });
+    console.log("Setting up tutor socket event listeners");
 
     // Tutor-specific events
-    newSocket.on("tutor:availability-set", () => {
+    const handleAvailabilitySet = () => {
       toast.success("You're now available for tutoring!");
       setAvailabilityState("waiting");
-    });
+    };
 
-    newSocket.on("tutor:availability-removed", () => {
+    const handleAvailabilityRemoved = () => {
       toast.success("You're no longer available for tutoring");
       setAvailabilityState("setup");
       setIncomingRequests([]);
@@ -78,14 +57,9 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
         clearTimeout(unavailableTimeoutRef.current);
         unavailableTimeoutRef.current = null;
       }
-    });
+    };
 
-    newSocket.on("error", error => {
-      console.error("Socket error:", error);
-      toast.error(error.message || "Socket error occurred");
-    });
-
-    newSocket.on("tutor:incoming-request", data => {
+    const handleIncomingRequest = (data: any) => {
       setIncomingRequests(prev => [...prev, data]);
       toast(
         (t: any) => (
@@ -120,45 +94,50 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
           position: "top-right",
         },
       );
-    });
+    };
 
-    newSocket.on("tutor:request-accepted", data => {
+    const handleRequestAccepted = (data: any) => {
       console.log("Request accepted, waiting for student:", data);
       setCurrentSession(data);
       setAvailabilityState("waiting-for-student");
       setIncomingRequests([]);
       toast.success("Request accepted! Waiting for student to start session...");
-    });
+    };
 
-    newSocket.on("tutor:student-rejected", data => {
+    const handleStudentRejected = (data: any) => {
       console.log("Student rejected or selected another tutor:", data);
       setCurrentSession(null);
       setAvailabilityState("waiting");
       setIncomingRequests([]);
       toast.info("Student rejected you or selected another tutor. Back to waiting for new requests.");
-    });
+    };
 
-    newSocket.on("tutor:student-selected", data => {
+    const handleStudentSelected = (data: any) => {
       console.log("🎯 TUTOR RECEIVED tutor:student-selected:", data);
       console.log("Current availability state:", availabilityState);
       setCurrentSession(data);
       setAvailabilityState("in-session");
       setIncomingRequests([]);
       toast.success("Student selected you! Session starting...");
-    });
+    };
 
-    setSocket(newSocket);
+    // Register event listeners
+    on("tutor:availability-set", handleAvailabilitySet);
+    on("tutor:availability-removed", handleAvailabilityRemoved);
+    on("tutor:incoming-request", handleIncomingRequest);
+    on("tutor:request-accepted", handleRequestAccepted);
+    on("tutor:student-rejected", handleStudentRejected);
+    on("tutor:student-selected", handleStudentSelected);
 
     return () => {
-      newSocket.disconnect();
-      
-      // Clear any pending timeout
-      if (unavailableTimeoutRef.current) {
-        clearTimeout(unavailableTimeoutRef.current);
-        unavailableTimeoutRef.current = null;
-      }
+      off("tutor:availability-set", handleAvailabilitySet);
+      off("tutor:availability-removed", handleAvailabilityRemoved);
+      off("tutor:incoming-request", handleIncomingRequest);
+      off("tutor:request-accepted", handleRequestAccepted);
+      off("tutor:student-rejected", handleStudentRejected);
+      off("tutor:student-selected", handleStudentSelected);
     };
-  }, [account?.address]);
+  }, [socket, account?.address, availabilityState]);
 
   const becomeAvailable = () => {
     if (!socket || !isConnected) {
@@ -172,7 +151,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       ratePerSecond,
     });
 
-    socket.emit("tutor:set-available", {
+    emit("tutor:set-available", {
       address: account?.address,
       language,
       ratePerSecond,
@@ -203,7 +182,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       unavailableTimeoutRef.current = null;
     }
 
-    socket.emit("tutor:set-unavailable", {
+    emit("tutor:set-unavailable", {
       address: account?.address,
     });
 
@@ -231,7 +210,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   const acceptRequest = (requestId: string) => {
     if (!socket) return;
 
-    socket.emit("tutor:accept-request", {
+    emit("tutor:accept-request", {
       requestId,
       tutorAddress: account?.address,
     });
@@ -243,7 +222,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   const declineRequest = (requestId: string) => {
     if (!socket) return;
 
-    socket.emit("tutor:decline-request", {
+    emit("tutor:decline-request", {
       requestId,
     });
 
@@ -644,7 +623,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               onClick={() => {
                 // Notify the student that we're withdrawing our acceptance
                 if (socket && currentSession) {
-                  socket.emit("tutor:withdraw-acceptance", {
+                  emit("tutor:withdraw-acceptance", {
                     requestId: currentSession.requestId,
                     tutorAddress: account?.address,
                     studentAddress: currentSession.studentAddress,
