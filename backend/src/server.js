@@ -174,6 +174,7 @@ io.on("connection", (socket) => {
       // Save socketId on the tutor hash and a reverse map socket -> address
       await redisClient.hSet(`tutor:${address}`, { socketId: socket.id });
       await redisClient.hSet("socket_to_address", socket.id, address);
+      console.log(`🔗 Bound socket ${socket.id} to address ${address}`);
     } catch (e) {
       console.error("Failed to bind socket to address:", e);
     }
@@ -187,6 +188,19 @@ io.on("connection", (socket) => {
       return null;
     }
   }
+
+  // Handle user connection (binds socket ID to address)
+  socket.on("user:connect", async (data) => {
+    try {
+      console.log(`🔗 User connected: ${data.role} ${data.address} (socket: ${socket.id})`);
+      
+      if (data.address && data.role) {
+        await bindSocketToAddress(data.address.toLowerCase());
+      }
+    } catch (error) {
+      console.error("Error handling user connect:", error);
+    }
+  });
 
   socket.on("tutor:setAvailable", async (payload, cb) => {
     try {
