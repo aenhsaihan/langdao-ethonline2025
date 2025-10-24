@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { io, Socket } from "socket.io-client";
+import { useSocket } from "../../lib/socket/socketContext";
 
 interface StudentTutorFinderProps {
   onBack?: () => void;
@@ -26,8 +26,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
   onSessionStart 
 }) => {
   const account = useActiveAccount();
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const { socket, isConnected, on, off, emit } = useSocket();
   const [finderState, setFinderState] = useState<FinderState>("setup");
   const [language, setLanguage] = useState("english");
   const [budgetPerSecond, setBudgetPerSecond] = useState(0.002);
@@ -63,49 +62,30 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
     };
   }, [finderState, searchStartTime]);
 
-  // Socket connection
+  // Socket event listeners
   useEffect(() => {
-    if (!account?.address) return;
+    if (!socket || !account?.address) return;
 
-    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000", {
-      transports: ["websocket", "polling"],
-      autoConnect: true,
-    });
-
-    newSocket.on("connect", () => {
-      setIsConnected(true);
-      console.log("Student socket connected:", newSocket.id);
-      
-      newSocket.emit("user:connect", {
-        address: account.address,
-        role: "student",
-        timestamp: Date.now(),
-      });
-    });
-
-    newSocket.on("disconnect", () => {
-      setIsConnected(false);
-      setFinderState("setup");
-    });
+    console.log("Setting up student socket event listeners");
 
     // Student-specific events
-    newSocket.on("student:request-sent", (data) => {
+    const handleRequestSent = (data: any) => {
       console.log("Request sent confirmation:", data);
       setCurrentRequestId(data.requestId);
       setFinderState("searching");
       setSearchStartTime(Date.now());
       toast.success("🔍 Searching for tutors...");
-    });
+    };
 
-    newSocket.on("student:no-tutors-available", () => {
+    const handleNoTutorsAvailable = () => {
       console.log("No tutors available initially");
       setFinderState("searching"); // Keep searching for tutors that come online
       toast("📡 No tutors online yet, broadcasting your request...", {
         duration: 3000,
       });
-    });
+    };
 
-    newSocket.on("student:tutor-accepted", (data: any) => {
+    const handleTutorAccepted = (data: any) => {
       console.log("Tutor accepted:", data);
       
       // Convert backend format to TutorResponse format
@@ -134,15 +114,14 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
         duration: 5000,
         position: "top-center",
       });
-    });
+    };
 
-    newSocket.on("student:tutor-declined", (data) => {
+    const handleTutorDeclined = (data: any) => {
       console.log("Tutor declined:", data);
       toast("😔 A tutor declined, still searching...");
-    });
+    };
 
-    // Listen for when tutors become unavailable
-    newSocket.on("tutor:available-updated", (data) => {
+    const handleTutorAvailabilityUpdated = (data: any) => {
       console.log("Tutor availability updated:", data);
       
       // If a tutor became unavailable and we're waiting for a response from them
@@ -155,10 +134,9 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
           toast("⚠️ Tutor became unavailable, continuing search...");
         }
       }
-    });
+    };
 
-    // Listen for when a tutor withdraws their acceptance
-    newSocket.on("tutor:withdrew-acceptance", (data) => {
+    const handleTutorWithdrewAcceptance = (data: any) => {
       console.log("🎯 STUDENT RECEIVED tutor:withdrew-acceptance:", data);
       console.log("Current finder state:", finderState);
       console.log("Current tutor:", currentTutor);
@@ -174,19 +152,32 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
       } else {
         console.log("Not handling tutor withdrawal - state:", finderState, "currentTutor:", currentTutor?.tutorAddress);
       }
-    });
+    };
 
-    newSocket.on("error", (error) => {
+    const handleError = (error: any) => {
       console.error("Socket error:", error);
       toast.error(error.message || "Connection error");
-    });
+    };
 
-    setSocket(newSocket);
+    // Register event listeners
+    on("student:request-sent", handleRequestSent);
+    on("student:no-tutors-available", handleNoTutorsAvailable);
+    on("student:tutor-accepted", handleTutorAccepted);
+    on("student:tutor-declined", handleTutorDeclined);
+    on("tutor:available-updated", handleTutorAvailabilityUpdated);
+    on("tutor:withdrew-acceptance", handleTutorWithdrewAcceptance);
+    on("error", handleError);
 
     return () => {
-      newSocket.disconnect();
+      off("student:request-sent", handleRequestSent);
+      off("student:no-tutors-available", handleNoTutorsAvailable);
+      off("student:tutor-accepted", handleTutorAccepted);
+      off("student:tutor-declined", handleTutorDeclined);
+      off("tutor:available-updated", handleTutorAvailabilityUpdated);
+      off("tutor:withdrew-acceptance", handleTutorWithdrewAcceptance);
+      off("error", handleError);
     };
-  }, [account?.address]);
+  }, [socket, account?.address, finderState, currentTutor, language]);
 
   const startSearch = () => {
     if (!socket || !isConnected) {
