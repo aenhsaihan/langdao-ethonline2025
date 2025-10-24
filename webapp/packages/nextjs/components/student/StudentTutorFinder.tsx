@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useActiveAccount } from "thirdweb/react";
-import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
+import React, { useEffect, useState } from "react";
 import { useSocket } from "../../lib/socket/socketContext";
+import { AnimatePresence, motion } from "framer-motion";
+import toast from "react-hot-toast";
+import { useActiveAccount } from "thirdweb/react";
 
 interface StudentTutorFinderProps {
   onBack?: () => void;
@@ -21,10 +21,7 @@ interface TutorResponse {
   timestamp: number;
 }
 
-export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ 
-  onBack, 
-  onSessionStart 
-}) => {
+export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, onSessionStart }) => {
   const account = useActiveAccount();
   const { socket, isConnected, on, off, emit } = useSocket();
   const [finderState, setFinderState] = useState<FinderState>("setup");
@@ -87,7 +84,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
 
     const handleTutorAccepted = (data: any) => {
       console.log("Tutor accepted:", data);
-      
+
       // Convert backend format to TutorResponse format
       const tutorResponse: TutorResponse = {
         requestId: data.requestId,
@@ -96,24 +93,25 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
         ratePerSecond: parseFloat(data.ratePerSecond) || 0,
         timestamp: Date.now(),
       };
-      
+
       setCurrentTutor(tutorResponse);
       setFinderState("tutor-found");
-      
-      toast((t: any) => (
-        <div className="flex flex-col space-y-2">
-          <div className="font-medium">🎉 Tutor Found!</div>
-          <div className="text-sm text-gray-600">
-            {tutorResponse.tutorAddress.slice(0, 6)}...{tutorResponse.tutorAddress.slice(-4)}
+
+      toast(
+        (t: any) => (
+          <div className="flex flex-col space-y-2">
+            <div className="font-medium">🎉 Tutor Found!</div>
+            <div className="text-sm text-gray-600">
+              {tutorResponse.tutorAddress.slice(0, 6)}...{tutorResponse.tutorAddress.slice(-4)}
+            </div>
+            <div className="text-sm text-gray-600">Rate: {tutorResponse.ratePerSecond} ETH/sec</div>
           </div>
-          <div className="text-sm text-gray-600">
-            Rate: {tutorResponse.ratePerSecond} ETH/sec
-          </div>
-        </div>
-      ), {
-        duration: 5000,
-        position: "top-center",
-      });
+        ),
+        {
+          duration: 5000,
+          position: "top-center",
+        },
+      );
     };
 
     const handleTutorDeclined = (data: any) => {
@@ -123,7 +121,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
 
     const handleTutorAvailabilityUpdated = (data: any) => {
       console.log("Tutor availability updated:", data);
-      
+
       // If a tutor became unavailable and we're waiting for a response from them
       if (data.action === "removed" && (finderState === "tutor-found" || finderState === "session-starting")) {
         // Check if the unavailable tutor is the one we're waiting for
@@ -140,11 +138,13 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
       console.log("🎯 STUDENT RECEIVED tutor:withdrew-acceptance:", data);
       console.log("Current finder state:", finderState);
       console.log("Current tutor:", currentTutor);
-      
+
       // If we're waiting for a tutor and this is the tutor we're waiting for
-      if ((finderState === "tutor-found" || finderState === "session-starting") && 
-          currentTutor && 
-          currentTutor.tutorAddress.toLowerCase() === data.tutorAddress.toLowerCase()) {
+      if (
+        (finderState === "tutor-found" || finderState === "session-starting") &&
+        currentTutor &&
+        currentTutor.tutorAddress.toLowerCase() === data.tutorAddress.toLowerCase()
+      ) {
         console.log("Tutor withdrew their acceptance, going back to searching");
         setCurrentTutor(null);
         setFinderState("searching");
@@ -186,7 +186,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
     }
 
     const requestId = `req_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     console.log("Starting tutor search:", {
       requestId,
       studentAddress: account?.address,
@@ -216,7 +216,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
 
     setFinderState("session-starting");
     toast.success("🎓 Starting session with tutor!");
-    
+
     // Simulate session start
     setTimeout(() => {
       onSessionStart?.(currentTutor);
@@ -244,7 +244,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
         requestId: currentRequestId,
         studentAddress: account?.address,
       });
-      
+
       console.log("Cancelling search and broadcasting to backend:", currentRequestId);
     }
 
@@ -262,20 +262,14 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
   if (finderState === "setup") {
     return (
       <div className="min-h-[calc(100vh-8rem)] bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl w-full"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl w-full">
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border-2 border-gray-200 dark:border-gray-700 shadow-xl">
             {/* Header */}
             <div className="text-center mb-8">
               <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6">
                 <span className="text-3xl">🎓</span>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                Find Your Perfect Tutor
-              </h2>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Find Your Perfect Tutor</h2>
               <p className="text-gray-600 dark:text-gray-300">
                 Connect instantly with native speakers and start learning!
               </p>
@@ -287,7 +281,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                 Language to Learn
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {languages.map((lang) => (
+                {languages.map(lang => (
                   <button
                     key={lang.value}
                     onClick={() => setLanguage(lang.value)}
@@ -298,9 +292,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                     }`}
                   >
                     <div className="text-2xl mb-1">{lang.flag}</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {lang.label}
-                    </div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{lang.label}</div>
                   </button>
                 ))}
               </div>
@@ -316,25 +308,19 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                   type="number"
                   step="0.0001"
                   value={budgetPerSecond}
-                  onChange={(e) => setBudgetPerSecond(parseFloat(e.target.value) || 0)}
+                  onChange={e => setBudgetPerSecond(parseFloat(e.target.value) || 0)}
                   className="w-full p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
                   placeholder="0.002"
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">
-                  ETH/sec
-                </div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">ETH/sec</div>
               </div>
-              <div className="mt-2 text-sm text-gray-500">
-                ≈ {(budgetPerSecond * 3600).toFixed(4)} ETH per hour
-              </div>
+              <div className="mt-2 text-sm text-gray-500">≈ {(budgetPerSecond * 3600).toFixed(4)} ETH per hour</div>
             </div>
 
             {/* Connection Status */}
             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Server Connection
-                </span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Server Connection</span>
                 <div className="flex items-center space-x-2">
                   <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}></div>
                   <span className={`text-sm ${isConnected ? "text-green-600" : "text-red-600"}`}>
@@ -387,7 +373,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                 transition={{ duration: 2, repeat: Infinity }}
                 className="absolute inset-0 w-40 h-40 mx-auto rounded-full bg-gradient-to-r from-purple-400 to-pink-400"
               />
-              
+
               {/* Middle rotating ring */}
               <motion.div
                 animate={{ rotate: 360 }}
@@ -396,18 +382,18 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
               >
                 <div className="w-full h-full rounded-full border-4 border-transparent border-t-purple-500 border-r-pink-500"></div>
               </motion.div>
-              
+
               {/* Inner content */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     scale: [1, 1.1, 1],
-                    rotate: [0, 10, -10, 0]
+                    rotate: [0, 10, -10, 0],
                   }}
-                  transition={{ 
-                    duration: 2, 
+                  transition={{
+                    duration: 2,
                     repeat: Infinity,
-                    ease: "easeInOut"
+                    ease: "easeInOut",
                   }}
                   className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg"
                 >
@@ -420,7 +406,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                   </motion.div>
                 </motion.div>
               </div>
-              
+
               {/* Floating search icons */}
               {[...Array(8)].map((_, i) => (
                 <motion.div
@@ -437,7 +423,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                   }}
                   className="absolute w-6 h-6 text-2xl"
                   style={{
-                    left: `${20 + (i * 10)}%`,
+                    left: `${20 + i * 10}%`,
                     top: `${20 + (i % 2) * 60}%`,
                   }}
                 >
@@ -446,10 +432,8 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
               ))}
             </div>
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Finding Your Tutor... 🔍
-            </h2>
-            
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Finding Your Tutor... 🔍</h2>
+
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
               Searching for <span className="font-semibold text-purple-600">{selectedLanguageData?.label}</span> tutors
               <br />
@@ -475,9 +459,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                     />
                   ))}
                 </div>
-                <span className="text-purple-600 dark:text-purple-400 font-medium">
-                  Broadcasting to all tutors...
-                </span>
+                <span className="text-purple-600 dark:text-purple-400 font-medium">Broadcasting to all tutors...</span>
                 <div className="flex space-x-1">
                   {[...Array(3)].map((_, i) => (
                     <motion.div
@@ -495,9 +477,9 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                   ))}
                 </div>
               </div>
-              
+
               <div className="text-sm text-gray-500">
-                Search time: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                Search time: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, "0")}
               </div>
             </div>
 
@@ -510,11 +492,11 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
               <div className="inline-flex items-center px-6 py-3 bg-purple-100 dark:bg-purple-900/30 rounded-full">
                 <div className="w-3 h-3 bg-purple-500 rounded-full mr-3 animate-pulse"></div>
                 <span className="text-purple-700 dark:text-purple-300 font-medium">
-                  {elapsedTime < 10 
-                    ? "Searching available tutors..." 
-                    : elapsedTime < 30 
-                    ? "Notifying tutors who come online..." 
-                    : "Broadcasting to new tutors..."}
+                  {elapsedTime < 10
+                    ? "Searching available tutors..."
+                    : elapsedTime < 30
+                      ? "Notifying tutors who come online..."
+                      : "Broadcasting to new tutors..."}
                 </span>
               </div>
             </motion.div>
@@ -559,9 +541,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
               </motion.div>
             </motion.div>
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Perfect Match Found! 🎓
-            </h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Perfect Match Found! 🎓</h2>
 
             {/* Tutor Info */}
             <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 mb-8">
@@ -578,7 +558,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -640,12 +620,8 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
               <span className="text-3xl">📹</span>
             </motion.div>
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Starting Your Session! 🎓
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              Connecting you with your tutor...
-            </p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Starting Your Session! 🎓</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">Connecting you with your tutor...</p>
 
             <motion.div
               animate={{ scale: [1, 1.05, 1] }}
@@ -653,9 +629,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
               className="inline-flex items-center px-6 py-3 bg-blue-100 dark:bg-blue-900/30 rounded-full"
             >
               <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
-              <span className="text-blue-700 dark:text-blue-300 font-medium">
-                Preparing video call...
-              </span>
+              <span className="text-blue-700 dark:text-blue-300 font-medium">Preparing video call...</span>
             </motion.div>
           </div>
         </motion.div>
