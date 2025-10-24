@@ -154,11 +154,6 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       }
     };
 
-    const handleError = (error: any) => {
-      console.error("Socket error:", error);
-      toast.error(error.message || "Connection error");
-    };
-
     // Register event listeners
     on("student:request-sent", handleRequestSent);
     on("student:no-tutors-available", handleNoTutorsAvailable);
@@ -166,7 +161,6 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
     on("student:tutor-declined", handleTutorDeclined);
     on("tutor:available-updated", handleTutorAvailabilityUpdated);
     on("tutor:withdrew-acceptance", handleTutorWithdrewAcceptance);
-    on("error", handleError);
 
     return () => {
       off("student:request-sent", handleRequestSent);
@@ -175,7 +169,6 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       off("student:tutor-declined", handleTutorDeclined);
       off("tutor:available-updated", handleTutorAvailabilityUpdated);
       off("tutor:withdrew-acceptance", handleTutorWithdrewAcceptance);
-      off("error", handleError);
     };
   }, [socket, account?.address, finderState, currentTutor, language]);
 
