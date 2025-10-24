@@ -335,6 +335,8 @@ io.on("connection", (socket) => {
   // Tutor sets unavailable
   socket.on("tutor:set-unavailable", async (data) => {
     try {
+      console.log(`🎯 RECEIVED tutor:set-unavailable from ${socket.id}:`, data);
+      
       if (!(await checkSocketRateLimit(socket.id))) {
         socket.emit("error", { message: "Rate limit exceeded" });
         return;
