@@ -351,6 +351,23 @@ io.on("connection", (socket) => {
 
       if (result.success) {
         socket.emit("tutor:availability-removed", { success: true });
+        
+        // Check if this tutor was in a session state (waiting to enter session)
+        // If so, notify the student they were waiting for
+        const tutorHash = await redisClient.hGetAll(`tutor:${data.address.toLowerCase()}`);
+        const wasInSession = tutorHash?.status === "waiting-to-enter-session";
+        
+        if (wasInSession) {
+          // Tutor withdrew their acceptance - notify the student
+          console.log(`🎯 EMITTING tutor:withdrew-acceptance for tutor ${data.address.toLowerCase()}`);
+          io.emit("tutor:withdrew-acceptance", {
+            tutorAddress: data.address.toLowerCase(),
+            message: "Tutor withdrew their acceptance and is back to waiting for students",
+          });
+        } else {
+          console.log(`🎯 Tutor ${data.address.toLowerCase()} was not in session state, status: ${tutorHash?.status}`);
+        }
+        
         // Broadcast that this tutor is no longer available
         io.emit("tutor:available-updated", {
           action: "removed",

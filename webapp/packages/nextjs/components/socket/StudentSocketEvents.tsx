@@ -78,17 +78,35 @@ export const StudentSocketEvents: React.FC<StudentSocketEventsProps> = ({ onTuto
       // Keep the request active for other tutors
     };
 
+    const handleTutorAvailabilityUpdated = (data: any) => {
+      console.log('Tutor availability updated:', data);
+      
+      // If a tutor became unavailable, remove any responses from them
+      if (data.action === 'removed') {
+        setTutorResponses(prev => prev.filter(resp => 
+          resp.tutorAddress.toLowerCase() !== data.tutor.address.toLowerCase()
+        ));
+        
+        // If this was the only tutor response, show a message
+        if (tutorResponses.length === 1 && tutorResponses[0].tutorAddress.toLowerCase() === data.tutor.address.toLowerCase()) {
+          toast.info('Tutor became unavailable, waiting for other responses...');
+        }
+      }
+    };
+
     // Register event listeners
     on('student:request-sent', handleRequestSent);
     on('student:no-tutors-available', handleNoTutorsAvailable);
     on('student:tutor-accepted', handleTutorAccepted);
     on('student:tutor-declined', handleTutorDeclined);
+    on('tutor:available-updated', handleTutorAvailabilityUpdated);
 
     return () => {
       off('student:request-sent', handleRequestSent);
       off('student:no-tutors-available', handleNoTutorsAvailable);
       off('student:tutor-accepted', handleTutorAccepted);
       off('student:tutor-declined', handleTutorDeclined);
+      off('tutor:available-updated', handleTutorAvailabilityUpdated);
     };
   }, [socket]); // Simplified deps
 

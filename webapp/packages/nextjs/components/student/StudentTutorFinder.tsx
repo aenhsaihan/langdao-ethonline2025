@@ -141,6 +141,41 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({
       toast("😔 A tutor declined, still searching...");
     });
 
+    // Listen for when tutors become unavailable
+    newSocket.on("tutor:available-updated", (data) => {
+      console.log("Tutor availability updated:", data);
+      
+      // If a tutor became unavailable and we're waiting for a response from them
+      if (data.action === "removed" && (finderState === "tutor-found" || finderState === "session-starting")) {
+        // Check if the unavailable tutor is the one we're waiting for
+        if (currentTutor && currentTutor.tutorAddress.toLowerCase() === data.tutor.address.toLowerCase()) {
+          console.log("Tutor we're waiting for became unavailable, going back to searching");
+          setCurrentTutor(null);
+          setFinderState("searching");
+          toast("⚠️ Tutor became unavailable, continuing search...");
+        }
+      }
+    });
+
+    // Listen for when a tutor withdraws their acceptance
+    newSocket.on("tutor:withdrew-acceptance", (data) => {
+      console.log("🎯 STUDENT RECEIVED tutor:withdrew-acceptance:", data);
+      console.log("Current finder state:", finderState);
+      console.log("Current tutor:", currentTutor);
+      
+      // If we're waiting for a tutor and this is the tutor we're waiting for
+      if ((finderState === "tutor-found" || finderState === "session-starting") && 
+          currentTutor && 
+          currentTutor.tutorAddress.toLowerCase() === data.tutorAddress.toLowerCase()) {
+        console.log("Tutor withdrew their acceptance, going back to searching");
+        setCurrentTutor(null);
+        setFinderState("searching");
+        toast("⚠️ Tutor withdrew their acceptance, continuing search...");
+      } else {
+        console.log("Not handling tutor withdrawal - state:", finderState, "currentTutor:", currentTutor?.tutorAddress);
+      }
+    });
+
     newSocket.on("error", (error) => {
       console.error("Socket error:", error);
       toast.error(error.message || "Connection error");

@@ -85,6 +85,17 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       toast.error('Reconnection failed');
     });
 
+    // Global event listeners for debugging
+    newSocket.on('tutor:available-updated', (data) => {
+      console.log('🌍 GLOBAL SOCKET RECEIVED tutor:available-updated:', data);
+      toast(`Global: Tutor ${data.action}`, { duration: 2000 });
+    });
+
+    newSocket.on('tutor:became-unavailable', (data) => {
+      console.log('🌍 GLOBAL SOCKET RECEIVED tutor:became-unavailable:', data);
+      toast(`Global: Tutor became unavailable`, { duration: 2000 });
+    });
+
     setSocket(newSocket);
   }, [account?.address, socket?.connected]);
 
