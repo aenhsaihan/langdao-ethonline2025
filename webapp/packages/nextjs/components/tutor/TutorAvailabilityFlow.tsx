@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { Socket, io } from "socket.io-client";
@@ -21,6 +21,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   const [ratePerSecond, setRatePerSecond] = useState(0.001);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any>(null);
+  const unavailableTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const languages = [
     { value: "english", label: "English", flag: "🇺🇸" },
@@ -71,6 +72,12 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       toast.success("You're no longer available for tutoring");
       setAvailabilityState("setup");
       setIncomingRequests([]);
+      
+      // Clear the timeout since server responded
+      if (unavailableTimeoutRef.current) {
+        clearTimeout(unavailableTimeoutRef.current);
+        unavailableTimeoutRef.current = null;
+      }
     });
 
     newSocket.on("error", error => {
@@ -143,6 +150,12 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
 
     return () => {
       newSocket.disconnect();
+      
+      // Clear any pending timeout
+      if (unavailableTimeoutRef.current) {
+        clearTimeout(unavailableTimeoutRef.current);
+        unavailableTimeoutRef.current = null;
+      }
     };
   }, [account?.address]);
 
@@ -183,19 +196,32 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     console.log("Socket connected:", socket.connected);
     console.log("Emitting tutor:set-unavailable for address:", account?.address);
 
+    // Clear any existing timeout
+    if (unavailableTimeoutRef.current) {
+      clearTimeout(unavailableTimeoutRef.current);
+      unavailableTimeoutRef.current = null;
+    }
+
     socket.emit("tutor:set-unavailable", {
       address: account?.address,
     });
 
     // Add a timeout fallback in case server doesn't respond
-    setTimeout(() => {
-      if (availabilityState === "waiting") {
+    // Capture the current state to check against when timeout fires
+    const currentState = availabilityState;
+    const timeout = setTimeout(() => {
+      // Only apply the fallback if we're still in the same state (waiting)
+      // This prevents the timeout from firing if the state changed due to other events
+      if (currentState === "waiting") {
         console.warn("No server response after 5 seconds, falling back to local state change");
         setAvailabilityState("setup");
         setIncomingRequests([]);
         toast.error("Server didn't respond, but you've been set as unavailable locally");
       }
+      unavailableTimeoutRef.current = null;
     }, 5000);
+    
+    unavailableTimeoutRef.current = timeout;
 
     // Don't immediately change state - wait for server confirmation
     toast("⏳ Removing you from available tutors...");
