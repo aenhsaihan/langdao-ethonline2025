@@ -17,8 +17,8 @@ const rooms = new Map();
 // Helper function to notify backend
 async function notifyBackend(eventData) {
     try {
-        // Replace with your actual backend URL
-        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001/api/webrtc-events';
+        // Backend URL for LangDAO main server
+        const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000/api/webrtc-events';
 
         const response = await fetch(backendUrl, {
             method: 'POST',

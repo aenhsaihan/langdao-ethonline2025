@@ -5,6 +5,8 @@ import { useSocket } from "../../lib/socket/socketContext";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useActiveAccount } from "thirdweb/react";
+import { CONTRACTS, LANGUAGES } from "../../lib/constants/contracts";
+import { useScaffoldWriteContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 interface StudentTutorFinderProps {
   onBack?: () => void;
@@ -32,6 +34,92 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
   const [currentTutor, setCurrentTutor] = useState<TutorResponse | null>(null);
   const [searchStartTime, setSearchStartTime] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [showSessionConfirm, setShowSessionConfirm] = useState(false);
+
+  // Scaffold-ETH hooks for contract interaction
+  const { writeContractAsync: startSessionWrite, isMining: isStartingSession } = useScaffoldWriteContract({
+    contractName: "LangDAO",
+  });
+
+  // Check student's token balance
+  const { data: studentBalance } = useScaffoldReadContract({
+    contractName: "MockERC20",
+    functionName: "balanceOf",
+    args: [account?.address],
+  });
+
+  // Check student's token allowance for LangDAO contract
+  const { data: tokenAllowance } = useScaffoldReadContract({
+    contractName: "MockERC20",
+    functionName: "allowance",
+    args: [account?.address, CONTRACTS.LANGDAO],
+  });
+
+  // Check if student can afford the session
+  const { data: canAfford } = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "canAffordRate",
+    args: [account?.address, currentTutor?.tutorAddress as `0x${string}`],
+  });
+
+  // Check if student has sufficient balance in contract
+  const { data: hasSufficientBalance } = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "hasSufficientBalance",
+    args: [account?.address, currentTutor?.tutorAddress as `0x${string}`, CONTRACTS.PYUSD],
+  });
+
+  // State to store tutor's actual on-chain languages
+  const [tutorOnChainLanguages, setTutorOnChainLanguages] = useState<number[]>([]);
+
+  // Check all possible languages the tutor offers (1-10)
+  const tutorLang1 = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorLanguage",
+    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(1)],
+  });
+  const tutorLang2 = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorLanguage",
+    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(2)],
+  });
+  const tutorLang3 = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorLanguage",
+    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(3)],
+  });
+  const tutorLang4 = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorLanguage",
+    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(4)],
+  });
+  const tutorLang5 = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorLanguage",
+    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(5)],
+  });
+
+  // Debug: Check all languages when currentTutor changes
+  useEffect(() => {
+    if (currentTutor) {
+      const offeredLanguages: number[] = [];
+      
+      if (tutorLang1.data) offeredLanguages.push(1);
+      if (tutorLang2.data) offeredLanguages.push(2);
+      if (tutorLang3.data) offeredLanguages.push(3);
+      if (tutorLang4.data) offeredLanguages.push(4);
+      if (tutorLang5.data) offeredLanguages.push(5);
+      
+      setTutorOnChainLanguages(offeredLanguages);
+      
+      console.log("=== TUTOR ON-CHAIN DEBUG ===");
+      console.log("Tutor address:", currentTutor.tutorAddress);
+      console.log("Language from socket:", currentTutor.language);
+      console.log("Languages tutor offers on-chain (IDs):", offeredLanguages);
+      console.log("Language names:", offeredLanguages.map(id => LANGUAGES.find(l => l.id === id)?.name));
+      console.log("============================");
+    }
+  }, [currentTutor, tutorLang1.data, tutorLang2.data, tutorLang3.data, tutorLang4.data, tutorLang5.data]);
 
   const languages = [
     { value: "english", label: "English", flag: "🇺🇸" },
@@ -201,19 +289,103 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
   const acceptTutor = () => {
     if (!socket || !currentTutor || !currentRequestId) return;
 
+    // Show confirmation modal with session details
+    setShowSessionConfirm(true);
+  };
+
+  const confirmAndStartSession = async () => {
+    if (!socket || !currentTutor || !currentRequestId || !account?.address) return;
+
+    // Close confirmation modal
+    setShowSessionConfirm(false);
+
+    // Notify tutor and backend that student is accepting
     socket.emit("student:accept-tutor", {
       requestId: currentRequestId,
       tutorAddress: currentTutor.tutorAddress,
       studentAddress: account?.address,
+      language: currentTutor.language,
     });
 
     setFinderState("session-starting");
     toast.success("🎓 Starting session with tutor!");
 
-    // Simulate session start
-    setTimeout(() => {
-      onSessionStart?.(currentTutor);
-    }, 2000);
+    try {
+      console.log("=== LANGUAGE MAPPING DEBUG ===");
+      console.log("currentTutor.language from socket:", currentTutor.language);
+      console.log("Student's selected language:", language);
+      console.log("Tutor's on-chain languages:", tutorOnChainLanguages);
+      console.log("Available LANGUAGES constant:", LANGUAGES);
+      
+      // WORKAROUND: Use the student's selected language (which should match the tutor's offered language from socket matching)
+      // This assumes the backend matching already verified they both want the same language
+      const languageObj = LANGUAGES.find(l => 
+        l.code === language || 
+        l.name.toLowerCase() === language.toLowerCase() ||
+        l.name === language
+      );
+      
+      const languageId = languageObj?.id || 1;
+      
+      const languageName = LANGUAGES.find(l => l.id === languageId)?.name || "Unknown";
+      console.log("✅ Using student's selected language:", { languageId, languageName, originalLanguage: language });
+      console.log("============================");
+
+      console.log("Starting session on blockchain:", {
+        tutorAddress: currentTutor.tutorAddress,
+        languageId,
+        languageIdBigInt: BigInt(languageId),
+        tokenAddress: CONTRACTS.PYUSD,
+        currentTutorData: currentTutor,
+      });
+
+      // Call startSession on the smart contract
+      const tx = await startSessionWrite({
+        functionName: "startSession",
+        args: [currentTutor.tutorAddress as `0x${string}`, BigInt(languageId), CONTRACTS.PYUSD],
+      });
+
+      console.log("Transaction sent successfully:", tx);
+      toast.success("Transaction confirmed! Entering room...");
+
+      // Once transaction is confirmed, redirect student to video call
+      const videoCallUrl = `https://langdao-production.up.railway.app/?student=${account?.address}&tutor=${currentTutor.tutorAddress}&session=${currentRequestId}`;
+
+      // Store session info for when student enters room
+      sessionStorage.setItem('pendingSession', JSON.stringify({
+        requestId: currentRequestId,
+        studentAddress: account?.address,
+        tutorAddress: currentTutor.tutorAddress,
+        languageId,
+        videoCallUrl,
+      }));
+
+      // Redirect student to video call
+      setTimeout(() => {
+        window.location.href = videoCallUrl;
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error starting session:", error);
+
+      // Check if user rejected the transaction
+      if (error?.message?.includes("user rejected") || error?.code === 4001 || error?.code === "ACTION_REJECTED") {
+        toast.error("Transaction rejected. Returning to search...");
+
+        // Notify tutor that student rejected the transaction
+        socket.emit("student:rejected-transaction", {
+          requestId: currentRequestId,
+          tutorAddress: currentTutor.tutorAddress,
+          studentAddress: account?.address,
+        });
+
+        // Return both to their previous states
+        setCurrentTutor(null);
+        setFinderState("searching");
+      } else {
+        toast.error("Failed to start session. Please try again.");
+        setFinderState("tutor-found");
+      }
+    }
   };
 
   const skipTutor = () => {
@@ -589,6 +761,90 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
                 Start Session Now
               </button>
             </div>
+
+            {/* Session Confirmation Modal */}
+            <AnimatePresence>
+              {showSessionConfirm && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+                  onClick={() => setShowSessionConfirm(false)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-md w-full border-2 border-gray-200 dark:border-gray-700"
+                  >
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                      Confirm Session Start
+                    </h3>
+
+                    <div className="space-y-4 mb-6">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Student</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {account?.address?.slice(0, 6)}...{account?.address?.slice(-4)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Tutor</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {currentTutor.tutorAddress.slice(0, 6)}...{currentTutor.tutorAddress.slice(-4)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Language</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {selectedLanguageData?.flag} {selectedLanguageData?.label}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Rate</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {currentTutor.ratePerSecond} ETH/sec
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        ⚠️ You'll be prompted to confirm the transaction in your wallet. Make sure you have enough PYUSD tokens and gas fees.
+                      </p>
+                    </div>
+
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => setShowSessionConfirm(false)}
+                        className="flex-1 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={confirmAndStartSession}
+                        disabled={isStartingSession}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isStartingSession ? (
+                          <div className="flex items-center justify-center">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Confirming...
+                          </div>
+                        ) : (
+                          "Confirm & Start"
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </div>

@@ -27,6 +27,7 @@ redisClient.on("connect", () => console.log("Connected to Redis"));
 const tutorRoutes = require("./routes/tutors");
 const studentRoutes = require("./routes/students");
 const matchingRoutes = require("./routes/matching");
+const webrtcRoutes = require("./routes/webrtc");
 const matchingService = require("./services/matchingService");
 
 const app = express();
@@ -108,6 +109,7 @@ app.get("/health", async (req, res) => {
 app.use("/api/tutors", tutorRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/matching", matchingRoutes);
+app.use("/api", webrtcRoutes); // WebRTC events endpoint
 
 // 404 handler
 app.use("*", (req, res) => {
@@ -591,6 +593,60 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Student entered webRTC room
+  socket.on("student:entered-room", async (data) => {
+    try {
+      if (!(await checkSocketRateLimit(socket.id))) {
+        socket.emit("error", { message: "Rate limit exceeded" });
+        return;
+      }
+
+      if (!data || !data.requestId || !data.tutorAddress || !data.studentAddress) {
+        socket.emit("error", { message: "Missing required fields" });
+        return;
+      }
+
+      console.log(`🚪 Student entered room: ${data.studentAddress} for session ${data.requestId}`);
+
+      // Store session mapping for webRTC end session handling
+      const sessionService = require("./services/sessionService");
+      await sessionService.storeSessionMapping(
+        data.requestId,
+        data.studentAddress,
+        data.tutorAddress,
+        data.languageId || 1
+      );
+
+      // Notify the tutor that student is in the room and they can join
+      const tutorHash = await redisClient.hGetAll(`tutor:${data.tutorAddress.toLowerCase()}`);
+      const tutorSocketId = tutorHash?.socketId;
+
+      console.log(`Looking for tutor socket: ${tutorSocketId}`);
+
+      if (tutorSocketId && io.sockets.sockets.get(tutorSocketId)) {
+        console.log(`✅ Notifying tutor that student is in room`);
+        io.to(tutorSocketId).emit("student:in-room", {
+          requestId: data.requestId,
+          studentAddress: data.studentAddress,
+          videoCallUrl: data.videoCallUrl,
+          message: "Student is in the room! You can join now.",
+        });
+        console.log(`✅ Notified tutor ${data.tutorAddress} that student is in room`);
+      } else {
+        console.log(`❌ Could not notify tutor - socket not found`);
+      }
+
+      // Confirm to student
+      socket.emit("student:room-entry-confirmed", {
+        requestId: data.requestId,
+        success: true,
+      });
+    } catch (error) {
+      console.error("Error processing student room entry:", error);
+      socket.emit("error", { message: "Failed to process room entry" });
+    }
+  });
+
   // Student cancels request
   socket.on("student:cancel-request", async (data) => {
     try {
@@ -746,6 +802,106 @@ io.on("connection", (socket) => {
     } catch (error) {
       console.error("Error processing student tutor acceptance:", error);
       socket.emit("error", { message: "Failed to process tutor acceptance" });
+    }
+  });
+
+  // Student rejected transaction
+  socket.on("student:rejected-transaction", async (data) => {
+    try {
+      if (!(await checkSocketRateLimit(socket.id))) {
+        socket.emit("error", { message: "Rate limit exceeded" });
+        return;
+      }
+
+      if (!data || !data.requestId || !data.tutorAddress || !data.studentAddress) {
+        socket.emit("error", { message: "Missing required fields" });
+        return;
+      }
+
+      console.log(`Student ${data.studentAddress} rejected transaction for request ${data.requestId}`);
+
+      // Notify the tutor that the student rejected the transaction
+      const tutorHash = await redisClient.hGetAll(`tutor:${data.tutorAddress.toLowerCase()}`);
+      const tutorSocketId = tutorHash?.socketId;
+
+      if (tutorSocketId && io.sockets.sockets.get(tutorSocketId)) {
+        io.to(tutorSocketId).emit("tutor:student-rejected-transaction", {
+          requestId: data.requestId,
+          studentAddress: data.studentAddress,
+          message: "Student rejected the transaction. Returning to waiting...",
+        });
+        console.log(`Notified tutor ${data.tutorAddress} that student rejected transaction`);
+      }
+
+      // Confirm to student
+      socket.emit("student:transaction-rejection-confirmed", {
+        requestId: data.requestId,
+        success: true,
+      });
+    } catch (error) {
+      console.error("Error processing transaction rejection:", error);
+      socket.emit("error", { message: "Failed to process transaction rejection" });
+    }
+  });
+
+  // Session started (blockchain transaction confirmed)
+  socket.on("session:started", async (data) => {
+    try {
+      if (!(await checkSocketRateLimit(socket.id))) {
+        socket.emit("error", { message: "Rate limit exceeded" });
+        return;
+      }
+
+      if (!data || !data.requestId || !data.tutorAddress || !data.studentAddress) {
+        socket.emit("error", { message: "Missing required fields" });
+        return;
+      }
+
+      console.log(`🚀 Session started on blockchain for request ${data.requestId}`);
+      console.log(`Looking for tutor: ${data.tutorAddress.toLowerCase()}`);
+
+      // Store session mapping for webRTC end session handling
+      const sessionService = require('./services/sessionService');
+      await sessionService.storeSessionMapping(
+        data.requestId,
+        data.studentAddress,
+        data.tutorAddress,
+        data.languageId || 1
+      );
+
+      // Notify the tutor that the session has started
+      const tutorHash = await redisClient.hGetAll(`tutor:${data.tutorAddress.toLowerCase()}`);
+      const tutorSocketId = tutorHash?.socketId;
+
+      console.log(`Tutor hash from Redis:`, tutorHash);
+      console.log(`Tutor socket ID:`, tutorSocketId);
+      console.log(`Socket exists:`, tutorSocketId ? !!io.sockets.sockets.get(tutorSocketId) : false);
+      console.log(`All connected sockets:`, Array.from(io.sockets.sockets.keys()));
+
+      if (tutorSocketId && io.sockets.sockets.get(tutorSocketId)) {
+        console.log(`✅ Emitting session:started to tutor socket ${tutorSocketId}`);
+        io.to(tutorSocketId).emit("session:started", {
+          requestId: data.requestId,
+          studentAddress: data.studentAddress,
+          videoCallUrl: data.videoCallUrl,
+          message: "Session confirmed on blockchain! Redirecting to video call...",
+        });
+        console.log(`✅ Notified tutor ${data.tutorAddress} that session started`);
+      } else {
+        console.log(`❌ Could not notify tutor - socket not found or not connected`);
+        console.log(`   Tutor address: ${data.tutorAddress}`);
+        console.log(`   Socket ID from Redis: ${tutorSocketId}`);
+        console.log(`   Socket connected: ${tutorSocketId ? !!io.sockets.sockets.get(tutorSocketId) : 'N/A'}`);
+      }
+
+      // Confirm to student
+      socket.emit("session:started-confirmed", {
+        requestId: data.requestId,
+        success: true,
+      });
+    } catch (error) {
+      console.error("Error processing session start:", error);
+      socket.emit("error", { message: "Failed to process session start" });
     }
   });
 

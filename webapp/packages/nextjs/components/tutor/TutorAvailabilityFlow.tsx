@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useActiveAccount } from "thirdweb/react";
 import { useSocket } from "../../lib/socket/socketContext";
+import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 interface TutorAvailabilityFlowProps {
   onBack?: () => void;
@@ -21,6 +22,60 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any>(null);
   const unavailableTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Monitor active session on blockchain for this tutor
+  const { data: activeSessionData, refetch: refetchActiveSession } = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "activeSessions",
+    args: [account?.address],
+  });
+
+  // Poll for active session when in waiting-for-student state
+  useEffect(() => {
+    if (availabilityState === "waiting-for-student" && account?.address) {
+      console.log("👀 Monitoring blockchain for active session...");
+      
+      // Check immediately
+      refetchActiveSession();
+      
+      // Then poll every 3 seconds
+      const interval = setInterval(() => {
+        console.log("🔄 Checking blockchain for active session...");
+        refetchActiveSession();
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }
+  }, [availabilityState, account?.address, refetchActiveSession]);
+
+  // Detect when session becomes active on blockchain
+  useEffect(() => {
+    if (activeSessionData && availabilityState === "waiting-for-student") {
+      const [student, tutor, token, startTime, endTime, ratePerSecond, totalPaid, languageId, sessionId, isActive] = activeSessionData;
+      
+      console.log("📊 Active session data from blockchain:", {
+        student,
+        tutor,
+        isActive,
+        startTime: startTime?.toString(),
+        sessionId: sessionId?.toString(),
+      });
+
+      // If session is active and has a start time, redirect to video call
+      if (isActive && startTime && startTime > 0n) {
+        console.log("✅ Session is active on blockchain! Redirecting to video call...");
+        
+        const videoCallUrl = `https://langdao-production.up.railway.app/?student=${student}&tutor=${account?.address}&session=${sessionId}`;
+        
+        toast.success("Session started on blockchain! Redirecting...");
+        
+        setTimeout(() => {
+          console.log("🚀 Redirecting to:", videoCallUrl);
+          window.location.href = videoCallUrl;
+        }, 1000);
+      }
+    }
+  }, [activeSessionData, availabilityState, account?.address]);
 
   const languages = [
     { value: "english", label: "English", flag: "🇺🇸" },
@@ -109,7 +164,9 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       setCurrentSession(null);
       setAvailabilityState("waiting");
       setIncomingRequests([]);
-      toast.info("Student rejected you or selected another tutor. Back to waiting for new requests.");
+      toast("Student rejected you or selected another tutor. Back to waiting for new requests.", {
+        icon: "ℹ️",
+      });
     };
 
     const handleStudentSelected = (data: any) => {
@@ -121,6 +178,43 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       toast.success("Student selected you! Session starting...");
     };
 
+    const handleSessionStarted = (data: any) => {
+      console.log("🚀 TUTOR RECEIVED session:started EVENT (tx confirmed)");
+      console.log("Session data:", data);
+      console.log("Waiting for student to enter room...");
+      
+      toast("Transaction confirmed! Waiting for student to enter room...", {
+        icon: "⏳",
+        duration: 10000,
+      });
+    };
+
+    const handleStudentInRoom = (data: any) => {
+      console.log("🚪🚪🚪 TUTOR RECEIVED student:in-room EVENT 🚪🚪🚪");
+      console.log("Student is in room:", data);
+      console.log("Current tutor address:", account?.address);
+      
+      // Now redirect to video call
+      const videoCallUrl = data.videoCallUrl || `https://langdao-production.up.railway.app/?student=${data.studentAddress}&tutor=${account?.address}&session=${data.requestId}`;
+      console.log("Student is in room! Redirecting to:", videoCallUrl);
+      
+      toast.success("Student is in the room! Joining now...");
+      setTimeout(() => {
+        console.log("Executing redirect now...");
+        window.location.href = videoCallUrl;
+      }, 1000);
+    };
+
+    const handleStudentRejectedTransaction = (data: any) => {
+      console.log("Student rejected transaction:", data);
+      // Return to waiting state
+      setCurrentSession(null);
+      setAvailabilityState("waiting");
+      toast("Student rejected the transaction. Back to waiting for new students.", {
+        icon: "⚠️",
+      });
+    };
+
     // Register event listeners
     on("tutor:availability-set", handleAvailabilitySet);
     on("tutor:availability-removed", handleAvailabilityRemoved);
@@ -128,6 +222,9 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     on("tutor:request-accepted", handleRequestAccepted);
     on("tutor:student-rejected", handleStudentRejected);
     on("tutor:student-selected", handleStudentSelected);
+    on("session:started", handleSessionStarted);
+    on("student:in-room", handleStudentInRoom);
+    on("tutor:student-rejected-transaction", handleStudentRejectedTransaction);
 
     return () => {
       off("tutor:availability-set", handleAvailabilitySet);
@@ -136,6 +233,9 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       off("tutor:request-accepted", handleRequestAccepted);
       off("tutor:student-rejected", handleStudentRejected);
       off("tutor:student-selected", handleStudentSelected);
+      off("session:started", handleSessionStarted);
+      off("student:in-room", handleStudentInRoom);
+      off("tutor:student-rejected-transaction", handleStudentRejectedTransaction);
     };
   }, [socket, account?.address, availabilityState]);
 
