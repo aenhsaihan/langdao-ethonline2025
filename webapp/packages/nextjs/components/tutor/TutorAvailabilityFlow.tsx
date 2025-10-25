@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useActiveAccount } from "thirdweb/react";
 import { useSocket } from "../../lib/socket/socketContext";
-import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract, useUsdConversion } from "~~/hooks/scaffold-eth";
+import { LANGUAGES } from "../../lib/constants/contracts";
 
 interface TutorAvailabilityFlowProps {
   onBack?: () => void;
@@ -17,8 +18,9 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   const account = useActiveAccount();
   const { socket, isConnected, on, off, emit } = useSocket();
   const [availabilityState, setAvailabilityState] = useState<AvailabilityState>("setup");
-  const [language, setLanguage] = useState("english");
-  const [ratePerSecond, setRatePerSecond] = useState(0.001);
+  const [language, setLanguage] = useState("en"); // Use language code instead of name
+  const [ratePerHour, setRatePerHour] = useState("10"); // Store as hourly rate string like registration
+  const { pyusdToUsdFormatted } = useUsdConversion();
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any>(null);
   const unavailableTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -34,10 +36,10 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   useEffect(() => {
     if (availabilityState === "waiting-for-student" && account?.address) {
       console.log("👀 Monitoring blockchain for active session...");
-      
+
       // Check immediately
       refetchActiveSession();
-      
+
       // Then poll every 3 seconds
       const interval = setInterval(() => {
         console.log("🔄 Checking blockchain for active session...");
@@ -52,7 +54,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   useEffect(() => {
     if (activeSessionData && availabilityState === "waiting-for-student") {
       const [student, tutor, token, startTime, endTime, ratePerSecond, totalPaid, languageId, sessionId, isActive] = activeSessionData;
-      
+
       console.log("📊 Active session data from blockchain:", {
         student,
         tutor,
@@ -64,11 +66,11 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       // If session is active and has a start time, redirect to video call
       if (isActive && startTime && startTime > 0n) {
         console.log("✅ Session is active on blockchain! Redirecting to video call...");
-        
+
         const videoCallUrl = `https://langdao-production.up.railway.app/?student=${student}&tutor=${account?.address}&session=${sessionId}`;
-        
+
         toast.success("Session started on blockchain! Redirecting...");
-        
+
         setTimeout(() => {
           console.log("🚀 Redirecting to:", videoCallUrl);
           window.location.href = videoCallUrl;
@@ -77,18 +79,23 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     }
   }, [activeSessionData, availabilityState, account?.address]);
 
-  const languages = [
-    { value: "english", label: "English", flag: "🇺🇸" },
-    { value: "spanish", label: "Spanish", flag: "🇪🇸" },
-    { value: "french", label: "French", flag: "🇫🇷" },
-    { value: "german", label: "German", flag: "🇩🇪" },
-    { value: "mandarin", label: "Mandarin", flag: "🇨🇳" },
-    { value: "japanese", label: "Japanese", flag: "🇯🇵" },
-    { value: "korean", label: "Korean", flag: "🇰🇷" },
-    { value: "italian", label: "Italian", flag: "🇮🇹" },
-    { value: "portuguese", label: "Portuguese", flag: "🇵🇹" },
-    { value: "russian", label: "Russian", flag: "🇷🇺" },
-  ];
+  // Use LANGUAGES from constants - map to format needed for UI
+  const languages = LANGUAGES.map(lang => ({
+    value: lang.code,
+    label: lang.name,
+    flag: lang.flag,
+    id: lang.id
+  }));
+
+  // Helper function to convert wei per second back to hourly USD for display
+  const weiPerSecondToHourlyUsd = (weiPerSecond: number | string | undefined): string => {
+    if (!weiPerSecond || weiPerSecond === 0) return "$0.00";
+    const wei = typeof weiPerSecond === "string" ? parseFloat(weiPerSecond) : weiPerSecond;
+    if (isNaN(wei)) return "$0.00";
+    const pyusdPerSecond = wei / 1e18;
+    const pyusdPerHour = pyusdPerSecond * 3600;
+    return pyusdToUsdFormatted(pyusdPerHour);
+  };
 
   // Socket event listeners
   useEffect(() => {
@@ -106,7 +113,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       toast.success("You're no longer available for tutoring");
       setAvailabilityState("setup");
       setIncomingRequests([]);
-      
+
       // Clear the timeout since server responded
       if (unavailableTimeoutRef.current) {
         clearTimeout(unavailableTimeoutRef.current);
@@ -121,7 +128,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
           <div className="flex flex-col space-y-2">
             <div className="font-medium">New Student Request!</div>
             <div className="text-sm text-gray-600">Student wants to learn {data.language}</div>
-            <div className="text-sm text-gray-600">Budget: {data.budgetPerSecond} ETH/sec</div>
+            <div className="text-sm text-gray-600">Budget: {weiPerSecondToHourlyUsd(data.budgetPerSecond)}/hr</div>
             <div className="flex space-x-2">
               <button
                 onClick={() => {
@@ -182,7 +189,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       console.log("🚀 TUTOR RECEIVED session:started EVENT (tx confirmed)");
       console.log("Session data:", data);
       console.log("Waiting for student to enter room...");
-      
+
       toast("Transaction confirmed! Waiting for student to enter room...", {
         icon: "⏳",
         duration: 10000,
@@ -193,11 +200,11 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       console.log("🚪🚪🚪 TUTOR RECEIVED student:in-room EVENT 🚪🚪🚪");
       console.log("Student is in room:", data);
       console.log("Current tutor address:", account?.address);
-      
+
       // Now redirect to video call
       const videoCallUrl = data.videoCallUrl || `https://langdao-production.up.railway.app/?student=${data.studentAddress}&tutor=${account?.address}&session=${data.requestId}`;
       console.log("Student is in room! Redirecting to:", videoCallUrl);
-      
+
       toast.success("Student is in the room! Joining now...");
       setTimeout(() => {
         console.log("Executing redirect now...");
@@ -245,10 +252,14 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       return;
     }
 
+    // Convert hourly rate to per-second wei (same as registration)
+    const ratePerSecond = Math.floor((parseFloat(ratePerHour) / 3600) * 1e18);
+
     console.log("Emitting tutor:set-available:", {
       address: account?.address,
       language,
       ratePerSecond,
+      ratePerHour, // for debugging
     });
 
     emit("tutor:set-available", {
@@ -300,7 +311,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       }
       unavailableTimeoutRef.current = null;
     }, 5000);
-    
+
     unavailableTimeoutRef.current = timeout;
 
     // Don't immediately change state - wait for server confirmation
@@ -359,19 +370,19 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Language to Teach
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                 {languages.map(lang => (
                   <button
                     key={lang.value}
                     onClick={() => setLanguage(lang.value)}
-                    className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                      language === lang.value
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center ${language === lang.value
                         ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
                         : "border-gray-200 dark:border-gray-600 hover:border-purple-300"
-                    }`}
+                      }`}
+                    title={lang.label}
                   >
-                    <div className="text-2xl mb-1">{lang.flag}</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{lang.label}</div>
+                    <div className="text-xl">{lang.flag}</div>
+                    <div className="text-xs font-medium text-gray-900 dark:text-white mt-1 truncate w-full text-center">{lang.label}</div>
                   </button>
                 ))}
               </div>
@@ -380,20 +391,30 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
             {/* Rate Setting */}
             <div className="mb-8">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your Rate (ETH per second)
+                Your Rate (PYUSD per hour)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  step="0.0001"
-                  value={ratePerSecond}
-                  onChange={e => setRatePerSecond(parseFloat(e.target.value) || 0)}
-                  className="w-full p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
-                  placeholder="0.001"
+                  step="0.01"
+                  min="0"
+                  value={ratePerHour}
+                  onChange={e => setRatePerHour(e.target.value)}
+                  className="w-full p-4 pr-28 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
+                  placeholder="10.00"
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">ETH/sec</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">PYUSD</div>
               </div>
-              <div className="mt-2 text-sm text-gray-500">≈ {(ratePerSecond * 3600).toFixed(4)} ETH per hour</div>
+              {ratePerHour && parseFloat(ratePerHour) > 0 && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    ≈ {pyusdToUsdFormatted(ratePerHour)}/hr
+                  </span>
+                  <span className="text-gray-500">
+                    {pyusdToUsdFormatted(parseFloat(ratePerHour) / 3600, 6)}/sec
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Connection Status */}
@@ -520,28 +541,28 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
             <div className="mb-6">
               <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
                 Teaching <span className="font-semibold text-green-600">{selectedLanguageData?.label}</span> at{" "}
-                <span className="font-semibold">{ratePerSecond} ETH/sec</span>
+                <span className="font-semibold">{pyusdToUsdFormatted(ratePerHour)}/hr</span>
               </p>
 
               {/* Earnings Preview */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {(ratePerSecond * 60).toFixed(4)}
+                    {pyusdToUsdFormatted(parseFloat(ratePerHour) / 60)}
                   </div>
-                  <div className="text-xs text-gray-500">ETH/min</div>
+                  <div className="text-xs text-gray-500">/min</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {(ratePerSecond * 3600).toFixed(4)}
+                    {pyusdToUsdFormatted(ratePerHour)}
                   </div>
-                  <div className="text-xs text-gray-500">ETH/hour</div>
+                  <div className="text-xs text-gray-500">/hour</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {(ratePerSecond * 86400).toFixed(3)}
+                    {pyusdToUsdFormatted(parseFloat(ratePerHour) * 24)}
                   </div>
-                  <div className="text-xs text-gray-500">ETH/day</div>
+                  <div className="text-xs text-gray-500">/day</div>
                 </div>
               </div>
             </div>
@@ -615,7 +636,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">Student Request</div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">
-                            Budget: {request.budgetPerSecond} ETH/sec
+                            Budget: {weiPerSecondToHourlyUsd(request.budgetPerSecond)}/hr
                           </div>
                         </div>
                         <div className="flex space-x-2">
@@ -701,7 +722,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                   Student: {currentSession?.studentAddress?.slice(0, 6)}...{currentSession?.studentAddress?.slice(-4)}
                 </div>
                 <div>Language: {currentSession?.language}</div>
-                <div>Rate: {currentSession?.budgetPerSecond} ETH/sec</div>
+                <div>Budget: {weiPerSecondToHourlyUsd(currentSession?.budgetPerSecond)}/hr</div>
               </div>
             </div>
 
@@ -729,7 +750,7 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
                     studentAddress: currentSession.studentAddress,
                   });
                 }
-                
+
                 setAvailabilityState("waiting");
                 setCurrentSession(null);
                 toast("Returned to waiting for students");

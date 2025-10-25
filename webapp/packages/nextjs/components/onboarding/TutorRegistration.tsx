@@ -4,7 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { LANGUAGES } from "../../lib/constants/contracts";
-import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldWriteContract, useUsdConversion } from "~~/hooks/scaffold-eth";
 
 interface TutorRegistrationProps {
   onComplete: () => void;
@@ -19,6 +19,8 @@ export const TutorRegistration = ({ onComplete, onBack }: TutorRegistrationProps
   const { writeContractAsync, isMining } = useScaffoldWriteContract({
     contractName: "LangDAO",
   });
+
+  const { pyusdToUsdFormatted } = useUsdConversion();
 
   const toggleLanguage = (languageId: number) => {
     setSelectedLanguages(prev =>
@@ -83,36 +85,35 @@ export const TutorRegistration = ({ onComplete, onBack }: TutorRegistrationProps
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Languages You Can Teach (Select multiple)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-64 overflow-y-auto p-2 border border-gray-200 dark:border-gray-600 rounded-lg">
                 {LANGUAGES.map((language) => (
                   <button
                     key={language.id}
                     type="button"
                     onClick={() => toggleLanguage(language.id)}
                     className={`
-                      p-3 rounded-xl border-2 transition-all duration-200 text-left
+                      p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center relative
                       ${selectedLanguages.includes(language.id)
                         ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
                         : "border-gray-200 dark:border-gray-600 hover:border-purple-300"
                       }
                     `}
+                    title={language.name}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg">{language.flag}</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {language.name}
-                      </span>
-                      {selectedLanguages.includes(language.id) && (
-                        <span className="ml-auto text-purple-500">✓</span>
-                      )}
-                    </div>
+                    <span className="text-xl">{language.flag}</span>
+                    <span className="text-xs font-medium text-gray-900 dark:text-white mt-1 truncate w-full text-center">
+                      {language.name}
+                    </span>
+                    {selectedLanguages.includes(language.id) && (
+                      <span className="absolute -top-1 -right-1 text-purple-500 bg-white dark:bg-gray-800 rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</span>
+                    )}
                   </button>
                 ))}
               </div>
               {selectedLanguageObjects.length > 0 && (
                 <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                   <p className="text-sm text-purple-700 dark:text-purple-300 mb-2">
-                    Selected languages:
+                    Selected languages ({selectedLanguageObjects.length}):
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {selectedLanguageObjects.map((lang) => (
@@ -131,7 +132,7 @@ export const TutorRegistration = ({ onComplete, onBack }: TutorRegistrationProps
             {/* Rate Per Hour */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Rate per Hour (PYUSD)
+                Rate per Hour
               </label>
               <div className="relative">
                 <input
@@ -141,12 +142,22 @@ export const TutorRegistration = ({ onComplete, onBack }: TutorRegistrationProps
                   value={ratePerHour}
                   onChange={(e) => setRatePerHour(e.target.value)}
                   placeholder="15.00"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 pr-24 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <div className="absolute right-3 top-3 text-gray-500 dark:text-gray-400">
                   PYUSD
                 </div>
               </div>
+              {ratePerHour && parseFloat(ratePerHour) > 0 && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    ≈ {pyusdToUsdFormatted(ratePerHour)}/hr
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {pyusdToUsdFormatted(parseFloat(ratePerHour) / 3600, 6)}/sec
+                  </span>
+                </div>
+              )}
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 This rate applies to all selected languages. Students pay per second of actual session time.
               </p>

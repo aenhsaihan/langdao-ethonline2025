@@ -4,7 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { LANGUAGES } from "../../lib/constants/contracts";
-import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldWriteContract, useUsdConversion } from "~~/hooks/scaffold-eth";
 
 interface StudentRegistrationProps {
   onComplete: () => void;
@@ -19,6 +19,8 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
   const { writeContractAsync, isMining } = useScaffoldWriteContract({
     contractName: "LangDAO",
   });
+
+  const { pyusdToUsdFormatted } = useUsdConversion();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,26 +77,25 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Target Language
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-64 overflow-y-auto p-2 border border-gray-200 dark:border-gray-600 rounded-lg">
                 {LANGUAGES.map((language) => (
                   <button
                     key={language.id}
                     type="button"
                     onClick={() => setTargetLanguage(language.id)}
                     className={`
-                      p-3 rounded-xl border-2 transition-all duration-200 text-left
+                      p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center
                       ${targetLanguage === language.id
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-200 dark:border-gray-600 hover:border-blue-300"
                       }
                     `}
+                    title={language.name}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg">{language.flag}</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {language.name}
-                      </span>
-                    </div>
+                    <span className="text-xl">{language.flag}</span>
+                    <span className="text-xs font-medium text-gray-900 dark:text-white mt-1 truncate w-full text-center">
+                      {language.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -110,7 +111,7 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
             {/* Budget Per Hour */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Budget per Hour (PYUSD)
+                Budget per Hour
               </label>
               <div className="relative">
                 <input
@@ -120,12 +121,22 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
                   value={budgetPerHour}
                   onChange={(e) => setBudgetPerHour(e.target.value)}
                   placeholder="10.00"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 pr-24 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <div className="absolute right-3 top-3 text-gray-500 dark:text-gray-400">
                   PYUSD
                 </div>
               </div>
+              {budgetPerHour && parseFloat(budgetPerHour) > 0 && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    ≈ {pyusdToUsdFormatted(budgetPerHour)}/hr
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {pyusdToUsdFormatted(parseFloat(budgetPerHour) / 3600, 6)}/sec
+                  </span>
+                </div>
+              )}
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 This is your maximum budget per hour. You'll only pay for actual session time.
               </p>

@@ -4,27 +4,21 @@ import React, { useState } from 'react';
 import { useSocket } from '../../lib/socket/socketContext';
 import { useActiveAccount } from 'thirdweb/react';
 import toast from 'react-hot-toast';
+import { LANGUAGES } from '../../lib/constants/contracts';
 
 export const QuickActions: React.FC = () => {
   const { isConnected, emit } = useSocket();
   const account = useActiveAccount();
   const [isAvailable, setIsAvailable] = useState(false);
-  const [language, setLanguage] = useState('english');
+  const [language, setLanguage] = useState('en'); // Use language code
   const [rate, setRate] = useState(0.001);
   const [budget, setBudget] = useState(0.002);
 
-  const languages = [
-    { value: 'english', label: 'English' },
-    { value: 'spanish', label: 'Spanish' },
-    { value: 'french', label: 'French' },
-    { value: 'german', label: 'German' },
-    { value: 'mandarin', label: 'Mandarin' },
-    { value: 'japanese', label: 'Japanese' },
-    { value: 'korean', label: 'Korean' },
-    { value: 'italian', label: 'Italian' },
-    { value: 'portuguese', label: 'Portuguese' },
-    { value: 'russian', label: 'Russian' },
-  ];
+  // Use LANGUAGES from constants
+  const languages = LANGUAGES.map(lang => ({
+    value: lang.code,
+    label: lang.name
+  }));
 
   const setTutorAvailable = () => {
     if (!account?.address) {
@@ -124,7 +118,7 @@ export const QuickActions: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Rate (ETH per second)
+                Rate (PYUSD per second)
               </label>
               <input
                 type="number"
@@ -134,6 +128,7 @@ export const QuickActions: React.FC = () => {
                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="0.001"
               />
+              <div className="text-xs text-gray-500 mt-1">≈ ${(rate * 3600).toFixed(2)}/hr</div>
             </div>
             
             <div className="flex space-x-2">
@@ -184,7 +179,7 @@ export const QuickActions: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Budget (ETH per second)
+                Budget (PYUSD per second)
               </label>
               <input
                 type="number"
@@ -194,6 +189,7 @@ export const QuickActions: React.FC = () => {
                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="0.002"
               />
+              <div className="text-xs text-gray-500 mt-1">≈ ${(budget * 3600).toFixed(2)}/hr</div>
             </div>
             
             <button

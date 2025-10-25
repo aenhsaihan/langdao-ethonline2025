@@ -5,12 +5,13 @@ import { useActiveAccount } from 'thirdweb/react';
 import { useSocket } from '../../lib/socket/socketContext';
 import { TutorSocketEvents } from './TutorSocketEvents';
 import { StudentSocketEvents } from './StudentSocketEvents';
+import { LANGUAGES } from '../../lib/constants/contracts';
 
 export const SocketDemo: React.FC = () => {
   const account = useActiveAccount();
   const { isConnected, emit } = useSocket();
   const [userRole, setUserRole] = useState<'tutor' | 'student' | null>(null);
-  const [language, setLanguage] = useState('english');
+  const [language, setLanguage] = useState('en'); // Use language code
   const [rate, setRate] = useState(0.001);
   const [budget, setBudget] = useState(0.002);
 
@@ -103,16 +104,16 @@ export const SocketDemo: React.FC = () => {
                 onChange={(e) => setLanguage(e.target.value)}
                 className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
               >
-                <option value="english">English</option>
-                <option value="spanish">Spanish</option>
-                <option value="french">French</option>
-                <option value="german">German</option>
-                <option value="mandarin">Mandarin</option>
+                {LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.flag} {lang.name}
+                  </option>
+                ))}
               </select>
             </div>
             {userRole === 'tutor' && (
               <div>
-                <label className="block text-sm font-medium mb-1">Rate (ETH/sec)</label>
+                <label className="block text-sm font-medium mb-1">Rate (PYUSD/sec)</label>
                 <input
                   type="number"
                   step="0.001"
@@ -120,11 +121,12 @@ export const SocketDemo: React.FC = () => {
                   onChange={(e) => setRate(parseFloat(e.target.value))}
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
                 />
+                <div className="text-xs text-gray-500 mt-1">≈ ${(rate * 3600).toFixed(2)}/hr</div>
               </div>
             )}
             {userRole === 'student' && (
               <div>
-                <label className="block text-sm font-medium mb-1">Budget (ETH/sec)</label>
+                <label className="block text-sm font-medium mb-1">Budget (PYUSD/sec)</label>
                 <input
                   type="number"
                   step="0.001"
@@ -132,6 +134,7 @@ export const SocketDemo: React.FC = () => {
                   onChange={(e) => setBudget(parseFloat(e.target.value))}
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
                 />
+                <div className="text-xs text-gray-500 mt-1">≈ ${(budget * 3600).toFixed(2)}/hr</div>
               </div>
             )}
           </div>

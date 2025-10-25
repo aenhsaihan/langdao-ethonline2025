@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useActiveAccount } from "thirdweb/react";
 import { CONTRACTS, LANGUAGES } from "../../lib/constants/contracts";
-import { useScaffoldWriteContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldWriteContract, useScaffoldReadContract, useUsdConversion } from "~~/hooks/scaffold-eth";
 
 interface StudentTutorFinderProps {
   onBack?: () => void;
@@ -27,8 +27,9 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
   const account = useActiveAccount();
   const { socket, isConnected, on, off, emit } = useSocket();
   const [finderState, setFinderState] = useState<FinderState>("setup");
-  const [language, setLanguage] = useState("english");
-  const [budgetPerSecond, setBudgetPerSecond] = useState(0.002);
+  const [language, setLanguage] = useState("en"); // Use language code instead of name
+  const [budgetPerHour, setBudgetPerHour] = useState("10"); // Store as hourly rate string like registration
+  const { pyusdToUsdFormatted } = useUsdConversion();
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [availableTutors, setAvailableTutors] = useState<TutorResponse[]>([]);
   const [currentTutor, setCurrentTutor] = useState<TutorResponse | null>(null);
@@ -121,18 +122,23 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
     }
   }, [currentTutor, tutorLang1.data, tutorLang2.data, tutorLang3.data, tutorLang4.data, tutorLang5.data]);
 
-  const languages = [
-    { value: "english", label: "English", flag: "🇺🇸" },
-    { value: "spanish", label: "Spanish", flag: "🇪🇸" },
-    { value: "french", label: "French", flag: "🇫🇷" },
-    { value: "german", label: "German", flag: "🇩🇪" },
-    { value: "mandarin", label: "Mandarin", flag: "🇨🇳" },
-    { value: "japanese", label: "Japanese", flag: "🇯🇵" },
-    { value: "korean", label: "Korean", flag: "🇰🇷" },
-    { value: "italian", label: "Italian", flag: "🇮🇹" },
-    { value: "portuguese", label: "Portuguese", flag: "🇵🇹" },
-    { value: "russian", label: "Russian", flag: "🇷🇺" },
-  ];
+  // Use LANGUAGES from constants - map to format needed for UI
+  const languages = LANGUAGES.map(lang => ({
+    value: lang.code,
+    label: lang.name,
+    flag: lang.flag,
+    id: lang.id
+  }));
+
+  // Helper function to convert wei per second back to hourly USD for display
+  const weiPerSecondToHourlyUsd = (weiPerSecond: number | string | undefined): string => {
+    if (!weiPerSecond || weiPerSecond === 0) return "$0.00";
+    const wei = typeof weiPerSecond === "string" ? parseFloat(weiPerSecond) : weiPerSecond;
+    if (isNaN(wei)) return "$0.00";
+    const pyusdPerSecond = wei / 1e18;
+    const pyusdPerHour = pyusdPerSecond * 3600;
+    return pyusdToUsdFormatted(pyusdPerHour);
+  };
 
   // Timer for elapsed search time
   useEffect(() => {
@@ -192,7 +198,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
             <div className="text-sm text-gray-600">
               {tutorResponse.tutorAddress.slice(0, 6)}...{tutorResponse.tutorAddress.slice(-4)}
             </div>
-            <div className="text-sm text-gray-600">Rate: {tutorResponse.ratePerSecond} ETH/sec</div>
+            <div className="text-sm text-gray-600">Rate: {weiPerSecondToHourlyUsd(tutorResponse.ratePerSecond)}/hr</div>
           </div>
         ),
         {
@@ -266,6 +272,9 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       return;
     }
 
+    // Convert hourly rate to per-second wei (same as registration)
+    const budgetPerSecond = Math.floor((parseFloat(budgetPerHour) / 3600) * 1e18);
+
     const requestId = `req_${Math.random().toString(36).substr(2, 9)}`;
 
     console.log("Starting tutor search:", {
@@ -273,6 +282,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       studentAddress: account?.address,
       language,
       budgetPerSecond,
+      budgetPerHour, // for debugging
     });
 
     socket.emit("student:request-tutor", {
@@ -317,18 +327,20 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       console.log("Tutor's on-chain languages:", tutorOnChainLanguages);
       console.log("Available LANGUAGES constant:", LANGUAGES);
       
-      // WORKAROUND: Use the student's selected language (which should match the tutor's offered language from socket matching)
-      // This assumes the backend matching already verified they both want the same language
-      const languageObj = LANGUAGES.find(l => 
-        l.code === language || 
-        l.name.toLowerCase() === language.toLowerCase() ||
-        l.name === language
-      );
+      // Find language by code (which is what we're using now)
+      const languageObj = LANGUAGES.find(l => l.code === language);
       
-      const languageId = languageObj?.id || 1;
+      if (!languageObj) {
+        throw new Error(`Language not found for code: ${language}`);
+      }
       
-      const languageName = LANGUAGES.find(l => l.id === languageId)?.name || "Unknown";
-      console.log("✅ Using student's selected language:", { languageId, languageName, originalLanguage: language });
+      const languageId = languageObj.id;
+      
+      console.log("✅ Using language:", { 
+        languageId, 
+        languageName: languageObj.name, 
+        languageCode: language 
+      });
       console.log("============================");
 
       console.log("Starting session on blockchain:", {
@@ -342,7 +354,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       // Call startSession on the smart contract
       const tx = await startSessionWrite({
         functionName: "startSession",
-        args: [currentTutor.tutorAddress as `0x${string}`, BigInt(languageId), CONTRACTS.PYUSD],
+        args: [currentTutor.tutorAddress as `0x${string}`, languageId, CONTRACTS.PYUSD as `0x${string}`],
       });
 
       console.log("Transaction sent successfully:", tx);
@@ -445,19 +457,20 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Language to Learn
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                 {languages.map(lang => (
                   <button
                     key={lang.value}
                     onClick={() => setLanguage(lang.value)}
-                    className={`p-3 rounded-xl border-2 transition-all duration-200 ${
+                    className={`p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center ${
                       language === lang.value
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                         : "border-gray-200 dark:border-gray-600 hover:border-blue-300"
                     }`}
+                    title={lang.label}
                   >
-                    <div className="text-2xl mb-1">{lang.flag}</div>
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{lang.label}</div>
+                    <div className="text-xl">{lang.flag}</div>
+                    <div className="text-xs font-medium text-gray-900 dark:text-white mt-1 truncate w-full text-center">{lang.label}</div>
                   </button>
                 ))}
               </div>
@@ -466,20 +479,30 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
             {/* Budget Setting */}
             <div className="mb-8">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your Budget (ETH per second)
+                Your Budget (PYUSD per hour)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  step="0.0001"
-                  value={budgetPerSecond}
-                  onChange={e => setBudgetPerSecond(parseFloat(e.target.value) || 0)}
-                  className="w-full p-4 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
-                  placeholder="0.002"
+                  step="0.01"
+                  min="0"
+                  value={budgetPerHour}
+                  onChange={e => setBudgetPerHour(e.target.value)}
+                  className="w-full p-4 pr-28 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
+                  placeholder="10.00"
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">ETH/sec</div>
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">PYUSD</div>
               </div>
-              <div className="mt-2 text-sm text-gray-500">≈ {(budgetPerSecond * 3600).toFixed(4)} ETH per hour</div>
+              {budgetPerHour && parseFloat(budgetPerHour) > 0 && (
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    ≈ {pyusdToUsdFormatted(budgetPerHour)}/hr
+                  </span>
+                  <span className="text-gray-500">
+                    {pyusdToUsdFormatted(parseFloat(budgetPerHour) / 3600, 6)}/sec
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Connection Status */}
@@ -602,7 +625,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
               Searching for <span className="font-semibold text-purple-600">{selectedLanguageData?.label}</span> tutors
               <br />
-              Budget: <span className="font-semibold">{budgetPerSecond} ETH/sec</span>
+              Budget: <span className="font-semibold">{pyusdToUsdFormatted(budgetPerHour)}/hr</span>
             </p>
 
             {/* Search Progress */}
@@ -724,18 +747,12 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {currentTutor.ratePerSecond}
+              <div className="flex justify-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                    {weiPerSecondToHourlyUsd(currentTutor.ratePerSecond)}
                   </div>
-                  <div className="text-xs text-gray-500">ETH/sec</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {(currentTutor.ratePerSecond * 3600).toFixed(4)}
-                  </div>
-                  <div className="text-xs text-gray-500">ETH/hour</div>
+                  <div className="text-sm text-gray-500">/hour</div>
                 </div>
               </div>
             </div>
@@ -808,7 +825,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
                       <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <span className="text-sm text-gray-600 dark:text-gray-400">Rate</span>
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {currentTutor.ratePerSecond} ETH/sec
+                          {weiPerSecondToHourlyUsd(currentTutor.ratePerSecond)}/hr
                         </span>
                       </div>
                     </div>

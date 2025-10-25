@@ -9,19 +9,63 @@ export const CONTRACTS = {
     LANGDAO: deployedContracts[31337]?.LangDAO?.address as `0x${string}` || "0x5FbDB2315678afecb367f032d93F642f64180aa3" as const,
 } as const;
 
-// Language mappings
+// Language mappings - matches LangDAO.sol language constants
+// IDs correspond to uint8 values in the smart contract
 export const LANGUAGES = [
+    { id: 0, name: "English", flag: "🇺🇸", code: "en" },
     { id: 1, name: "Spanish", flag: "🇪🇸", code: "es" },
     { id: 2, name: "French", flag: "🇫🇷", code: "fr" },
     { id: 3, name: "German", flag: "🇩🇪", code: "de" },
     { id: 4, name: "Italian", flag: "🇮🇹", code: "it" },
     { id: 5, name: "Portuguese", flag: "🇵🇹", code: "pt" },
-    { id: 6, name: "Japanese", flag: "🇯🇵", code: "ja" },
-    { id: 7, name: "Korean", flag: "🇰🇷", code: "ko" },
-    { id: 8, name: "Chinese", flag: "🇨🇳", code: "zh" },
-    { id: 9, name: "Arabic", flag: "🇸🇦", code: "ar" },
-    { id: 10, name: "Russian", flag: "🇷🇺", code: "ru" },
+    { id: 6, name: "Russian", flag: "🇷🇺", code: "ru" },
+    { id: 7, name: "Chinese", flag: "🇨🇳", code: "zh" },
+    { id: 8, name: "Japanese", flag: "🇯🇵", code: "ja" },
+    { id: 9, name: "Korean", flag: "🇰🇷", code: "ko" },
+    { id: 10, name: "Arabic", flag: "🇸🇦", code: "ar" },
+    { id: 11, name: "Hindi", flag: "🇮🇳", code: "hi" },
+    { id: 12, name: "Dutch", flag: "🇳🇱", code: "nl" },
+    { id: 13, name: "Swedish", flag: "🇸🇪", code: "sv" },
+    { id: 14, name: "Norwegian", flag: "🇳🇴", code: "no" },
+    { id: 15, name: "Danish", flag: "🇩🇰", code: "da" },
+    { id: 16, name: "Finnish", flag: "🇫🇮", code: "fi" },
+    { id: 17, name: "Polish", flag: "🇵🇱", code: "pl" },
+    { id: 18, name: "Turkish", flag: "🇹🇷", code: "tr" },
+    { id: 19, name: "Greek", flag: "🇬🇷", code: "el" },
+    { id: 20, name: "Hebrew", flag: "🇮🇱", code: "he" },
+    { id: 21, name: "Thai", flag: "🇹🇭", code: "th" },
+    { id: 22, name: "Vietnamese", flag: "🇻🇳", code: "vi" },
+    { id: 23, name: "Indonesian", flag: "🇮🇩", code: "id" },
+    { id: 24, name: "Malay", flag: "🇲🇾", code: "ms" },
+    { id: 25, name: "Tagalog", flag: "🇵🇭", code: "tl" },
+    { id: 26, name: "Ukrainian", flag: "🇺🇦", code: "uk" },
+    { id: 27, name: "Czech", flag: "🇨🇿", code: "cs" },
+    { id: 28, name: "Hungarian", flag: "🇭🇺", code: "hu" },
+    { id: 29, name: "Romanian", flag: "🇷🇴", code: "ro" },
+    { id: 30, name: "Bulgarian", flag: "🇧🇬", code: "bg" },
+    { id: 31, name: "Croatian", flag: "🇭🇷", code: "hr" },
+    { id: 32, name: "Serbian", flag: "🇷🇸", code: "sr" },
+    { id: 33, name: "Slovak", flag: "🇸🇰", code: "sk" },
+    { id: 34, name: "Slovenian", flag: "🇸🇮", code: "sl" },
+    { id: 35, name: "Lithuanian", flag: "🇱🇹", code: "lt" },
+    { id: 36, name: "Latvian", flag: "🇱🇻", code: "lv" },
+    { id: 37, name: "Estonian", flag: "🇪🇪", code: "et" },
 ] as const;
+
+// Helper function to get language by code
+export const getLanguageByCode = (code: string) => {
+    return LANGUAGES.find(lang => lang.code === code);
+};
+
+// Helper function to get language by name (case-insensitive)
+export const getLanguageByName = (name: string) => {
+    return LANGUAGES.find(lang => lang.name.toLowerCase() === name.toLowerCase());
+};
+
+// Helper function to get language by ID
+export const getLanguageById = (id: number) => {
+    return LANGUAGES.find(lang => lang.id === id);
+};
 
 // Contract ABIs
 export const LANGDAO_ABI = [
