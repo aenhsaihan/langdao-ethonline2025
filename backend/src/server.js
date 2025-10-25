@@ -1067,6 +1067,197 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Session Management Handlers
+  
+  // Start a session
+  socket.on('session:start', async (data) => {
+    try {
+      console.log('Session start requested:', data);
+      
+      const { sessionId, tutorAddress, studentAddress, language, ratePerSecond, startTime, estimatedDuration, studentBalance } = data;
+      
+      if (!sessionId || !tutorAddress || !studentAddress) {
+        socket.emit('error', { message: 'Missing required session fields' });
+        return;
+      }
+
+      // Store session data in Redis
+      const sessionData = {
+        sessionId,
+        tutorAddress: tutorAddress.toLowerCase(),
+        studentAddress: studentAddress.toLowerCase(),
+        language,
+        ratePerSecond: String(ratePerSecond),
+        startTime: String(startTime),
+        estimatedDuration: String(estimatedDuration),
+        studentBalance: String(studentBalance),
+        status: 'active',
+        tutorSocketId: '',
+        studentSocketId: ''
+      };
+
+      // Find socket IDs for tutor and student
+      const tutorData = await redisClient.hGetAll(`tutor:${tutorAddress.toLowerCase()}`);
+      if (tutorData?.socketId) {
+        sessionData.tutorSocketId = tutorData.socketId;
+      }
+
+      const studentAddressData = await redisClient.hGet('socket_to_address', socket.id);
+      if (studentAddressData === studentAddress.toLowerCase()) {
+        sessionData.studentSocketId = socket.id;
+      }
+
+      await redisClient.hSet(`session:${sessionId}`, sessionData);
+      await redisClient.expire(`session:${sessionId}`, 24 * 3600); // 24 hour TTL
+
+      // Notify both tutor and student
+      if (sessionData.tutorSocketId) {
+        io.to(sessionData.tutorSocketId).emit('session:started', data);
+      }
+      if (sessionData.studentSocketId) {
+        io.to(sessionData.studentSocketId).emit('session:started', data);
+      }
+
+      console.log('Session started:', sessionId);
+    } catch (error) {
+      console.error('Error starting session:', error);
+      socket.emit('error', { message: 'Failed to start session' });
+    }
+  });
+
+  // End a session
+  socket.on('session:end', async (data) => {
+    try {
+      const { sessionId } = data;
+      
+      if (!sessionId) {
+        socket.emit('error', { message: 'Missing sessionId' });
+        return;
+      }
+
+      const sessionData = await redisClient.hGetAll(`session:${sessionId}`);
+      
+      if (!sessionData || Object.keys(sessionData).length === 0) {
+        socket.emit('error', { message: 'Session not found' });
+        return;
+      }
+
+      // Calculate final stats
+      const startTime = parseInt(sessionData.startTime);
+      const endTime = Date.now();
+      const duration = Math.floor((endTime - startTime) / 1000);
+      const totalCost = duration * parseFloat(sessionData.ratePerSecond);
+      const finalBalance = parseFloat(sessionData.studentBalance) - totalCost;
+
+      const summary = {
+        sessionId,
+        duration,
+        totalCost,
+        finalBalance: Math.max(0, finalBalance),
+        tutorAddress: sessionData.tutorAddress,
+        studentAddress: sessionData.studentAddress,
+        language: sessionData.language,
+        ratePerSecond: parseFloat(sessionData.ratePerSecond)
+      };
+
+      // Notify both parties
+      const endData = {
+        sessionId,
+        reason: 'ended_by_user',
+        summary
+      };
+
+      if (sessionData.tutorSocketId) {
+        io.to(sessionData.tutorSocketId).emit('session:ended', endData);
+      }
+      if (sessionData.studentSocketId) {
+        io.to(sessionData.studentSocketId).emit('session:ended', endData);
+      }
+
+      // Clean up session data
+      await redisClient.del(`session:${sessionId}`);
+
+      console.log('Session ended:', sessionId, 'Duration:', duration, 'seconds');
+    } catch (error) {
+      console.error('Error ending session:', error);
+      socket.emit('error', { message: 'Failed to end session' });
+    }
+  });
+
+  // Update student balance during session
+  socket.on('session:update-balance', async (data) => {
+    try {
+      const { sessionId, newBalance } = data;
+      
+      if (!sessionId || typeof newBalance !== 'number') {
+        socket.emit('error', { message: 'Invalid balance update data' });
+        return;
+      }
+
+      const sessionData = await redisClient.hGetAll(`session:${sessionId}`);
+      
+      if (!sessionData || Object.keys(sessionData).length === 0) {
+        return;
+      }
+
+      // Update balance
+      await redisClient.hSet(`session:${sessionId}`, { studentBalance: String(newBalance) });
+
+      // Notify both parties
+      const updateData = { sessionId, newBalance };
+      
+      if (sessionData.tutorSocketId) {
+        io.to(sessionData.tutorSocketId).emit('session:balance-update', updateData);
+      }
+      if (sessionData.studentSocketId) {
+        io.to(sessionData.studentSocketId).emit('session:balance-update', updateData);
+      }
+
+      // Check for low balance
+      const ratePerSecond = parseFloat(sessionData.ratePerSecond);
+      const estimatedDuration = parseInt(sessionData.estimatedDuration);
+      const estimatedCost = ratePerSecond * estimatedDuration;
+      
+      if (newBalance < estimatedCost * 0.2 && newBalance > 0) {
+        const timeRemaining = Math.floor(newBalance / ratePerSecond);
+        
+        if (sessionData.studentSocketId) {
+          io.to(sessionData.studentSocketId).emit('session:low-balance-warning', {
+            sessionId,
+            currentBalance: newBalance,
+            timeRemaining
+          });
+        }
+      }
+
+      // Auto-end if balance depleted
+      if (newBalance <= 0) {
+        const endData = {
+          sessionId,
+          reason: 'balance_depleted',
+          summary: {
+            sessionId,
+            duration: Math.floor((Date.now() - parseInt(sessionData.startTime)) / 1000),
+            totalCost: parseFloat(sessionData.studentBalance),
+            finalBalance: 0
+          }
+        };
+
+        if (sessionData.tutorSocketId) {
+          io.to(sessionData.tutorSocketId).emit('session:ended', endData);
+        }
+        if (sessionData.studentSocketId) {
+          io.to(sessionData.studentSocketId).emit('session:ended', endData);
+        }
+
+        await redisClient.del(`session:${sessionId}`);
+        console.log('Session auto-ended due to balance depletion:', sessionId);
+      }
+    } catch (error) {
+      console.error('Error updating session balance:', error);
+    }
+  });
+
   // Handle disconnection
   socket.on("disconnect", async (reason) => {
     console.log("Client disconnected:", socket.id, "Reason:", reason);

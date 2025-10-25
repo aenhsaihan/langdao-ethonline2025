@@ -1,180 +1,226 @@
 const express = require('express');
 const router = express.Router();
-const { ethers } = require('ethers');
-const sessionService = require('../services/sessionService');
-
-// Import contract ABI and address
-const deployedContracts = require('../../../webapp/packages/hardhat/contracts/deployedContracts');
-const LANGDAO_ABI = deployedContracts[31337]?.LangDAO?.abi;
-const LANGDAO_ADDRESS = deployedContracts[31337]?.LangDAO?.address;
-
-// Setup provider and wallet for backend transactions
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
-const backendWallet = new ethers.Wallet(process.env.BACKEND_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', provider);
-
-// Create contract instance
-const langDAOContract = new ethers.Contract(LANGDAO_ADDRESS, LANGDAO_ABI, backendWallet);
-
-// Store active sessions and their heartbeat status
-const activeSessions = new Map();
 
 /**
- * POST /api/webrtc-events
- * Receives events from the webRTC server
+ * WebRTC signaling routes for peer-to-peer video sessions
  */
-router.post('/webrtc-events', async (req, res) => {
+
+// Store active rooms and their participants
+const activeRooms = new Map();
+
+/**
+ * Create or join a WebRTC room
+ */
+router.post('/room/join', async (req, res) => {
   try {
-    const { type, sessionId, userRole, userAddress, timestamp, endedBy, reason } = req.body;
+    const { roomId, userId, userType } = req.body;
 
-    console.log(`📡 WebRTC Event received:`, { type, sessionId, userRole, timestamp });
-
-    switch (type) {
-      case 'user-connected':
-        handleUserConnected(sessionId, userRole, timestamp);
-        break;
-
-      case 'session-heartbeat':
-        handleHeartbeat(sessionId, timestamp);
-        break;
-
-      case 'session-ended':
-        await handleSessionEnded(sessionId, endedBy, userAddress, timestamp);
-        break;
-
-      case 'user-disconnected':
-        await handleUserDisconnected(sessionId, userRole, reason, timestamp);
-        break;
-
-      default:
-        console.log(`Unknown event type: ${type}`);
+    if (!roomId || !userId || !userType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: roomId, userId, userType'
+      });
     }
 
-    res.json({ success: true, message: 'Event processed' });
+    if (!['tutor', 'student'].includes(userType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'userType must be either "tutor" or "student"'
+      });
+    }
+
+    // Get or create room
+    let room = activeRooms.get(roomId);
+    if (!room) {
+      room = {
+        id: roomId,
+        participants: [],
+        createdAt: new Date().toISOString(),
+        status: 'waiting'
+      };
+      activeRooms.set(roomId, room);
+    }
+
+    // Check if user already in room
+    const existingParticipant = room.participants.find(p => p.userId === userId);
+    if (existingParticipant) {
+      return res.json({
+        success: true,
+        room,
+        message: 'Already in room'
+      });
+    }
+
+    // Add participant
+    room.participants.push({
+      userId,
+      userType,
+      joinedAt: new Date().toISOString(),
+      status: 'connected'
+    });
+
+    // Update room status
+    if (room.participants.length === 2) {
+      room.status = 'active';
+    }
+
+    res.json({
+      success: true,
+      room,
+      message: 'Successfully joined room'
+    });
+
   } catch (error) {
-    console.error('Error processing webRTC event:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error joining room:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
 });
 
 /**
- * Handle user connection to webRTC session
+ * Leave a WebRTC room
  */
-function handleUserConnected(sessionId, userRole, timestamp) {
-  console.log(`✅ User connected: ${userRole} in session ${sessionId}`);
-  
-  if (!activeSessions.has(sessionId)) {
-    activeSessions.set(sessionId, {
-      startTime: timestamp,
-      lastHeartbeat: timestamp,
-      users: new Set(),
+router.post('/room/leave', async (req, res) => {
+  try {
+    const { roomId, userId } = req.body;
+
+    if (!roomId || !userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: roomId, userId'
+      });
+    }
+
+    const room = activeRooms.get(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: 'Room not found'
+      });
+    }
+
+    // Remove participant
+    room.participants = room.participants.filter(p => p.userId !== userId);
+
+    // Update room status
+    if (room.participants.length === 0) {
+      activeRooms.delete(roomId);
+    } else if (room.participants.length === 1) {
+      room.status = 'waiting';
+    }
+
+    res.json({
+      success: true,
+      message: 'Successfully left room',
+      room: room.participants.length > 0 ? room : null
+    });
+
+  } catch (error) {
+    console.error('Error leaving room:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
     });
   }
-  
-  activeSessions.get(sessionId).users.add(userRole);
-}
+});
 
 /**
- * Handle heartbeat from webRTC session
- * This keeps the session alive and prevents automatic termination
+ * Get room information
  */
-function handleHeartbeat(sessionId, timestamp) {
-  console.log(`💓 Heartbeat for session ${sessionId}`);
-  
-  if (activeSessions.has(sessionId)) {
-    activeSessions.get(sessionId).lastHeartbeat = timestamp;
-  }
-}
-
-/**
- * Handle session ended by user clicking "End Call"
- * This should call endSession on the smart contract
- */
-async function handleSessionEnded(sessionId, endedBy, userAddress, timestamp) {
-  console.log(`🛑 Session ended by ${endedBy}: ${sessionId}`);
-  
+router.get('/room/:roomId', async (req, res) => {
   try {
-    // Get session mapping to find tutor address
-    const sessionResult = await sessionService.getSessionMapping(sessionId);
-    
-    if (!sessionResult.success) {
-      console.error(`Session mapping not found for ${sessionId}`);
-      return;
+    const { roomId } = req.params;
+
+    const room = activeRooms.get(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: 'Room not found'
+      });
     }
 
-    const { tutorAddress, studentAddress } = sessionResult.session;
-    console.log(`Session details: Student=${studentAddress}, Tutor=${tutorAddress}`);
-    
-    // Call endSession on the smart contract with tutor address
-    console.log(`Calling endSession on smart contract for tutor: ${tutorAddress}`);
-    
-    const tx = await langDAOContract.endSession(tutorAddress);
-    console.log(`Transaction sent: ${tx.hash}`);
-    
-    const receipt = await tx.wait();
-    console.log(`✅ Session ended on blockchain. Gas used: ${receipt.gasUsed.toString()}`);
-    
-    // Clean up local session data
-    activeSessions.delete(sessionId);
-    await sessionService.removeSessionMapping(sessionId);
-    
+    res.json({
+      success: true,
+      room
+    });
+
   } catch (error) {
-    console.error(`Error ending session on blockchain:`, error);
-    throw error;
+    console.error('Error getting room info:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
-}
+});
 
 /**
- * Handle user disconnection (connection lost, browser closed, etc.)
- * This should also call endSession after a grace period
+ * Get all active rooms
  */
-async function handleUserDisconnected(sessionId, userRole, reason, timestamp) {
-  console.log(`⚠️ User disconnected: ${userRole} from session ${sessionId}. Reason: ${reason}`);
-  
-  const session = activeSessions.get(sessionId);
-  if (!session) {
-    console.log(`Session ${sessionId} not found in active sessions`);
-    return;
-  }
-  
-  // Remove user from session
-  session.users.delete(userRole);
-  
-  // If all users have disconnected, end the session after a grace period
-  if (session.users.size === 0) {
-    console.log(`All users disconnected from session ${sessionId}. Ending session in 30 seconds...`);
+router.get('/rooms', async (req, res) => {
+  try {
+    const rooms = Array.from(activeRooms.values());
     
-    // Wait 30 seconds to see if anyone reconnects
-    setTimeout(async () => {
-      const currentSession = activeSessions.get(sessionId);
-      if (currentSession && currentSession.users.size === 0) {
-        console.log(`Grace period expired. Ending session ${sessionId} on blockchain...`);
-        
-        // TODO: Get tutor address from session data
-        // For now, this is a placeholder
-        // await handleSessionEnded(sessionId, 'system', tutorAddress, Date.now());
-      }
-    }, 30000);
+    res.json({
+      success: true,
+      rooms,
+      total: rooms.length
+    });
+
+  } catch (error) {
+    console.error('Error getting rooms:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
-}
+});
 
 /**
- * Heartbeat monitor - checks for stale sessions
- * Runs every minute to check if any sessions haven't sent heartbeat in 2 minutes
+ * WebRTC signaling endpoint for offer/answer/ice-candidate exchange
  */
-setInterval(() => {
-  const now = Date.now();
-  const HEARTBEAT_TIMEOUT = 2 * 60 * 1000; // 2 minutes
-  
-  for (const [sessionId, session] of activeSessions.entries()) {
-    const timeSinceLastHeartbeat = now - session.lastHeartbeat;
-    
-    if (timeSinceLastHeartbeat > HEARTBEAT_TIMEOUT) {
-      console.log(`⚠️ Session ${sessionId} has stale heartbeat (${Math.floor(timeSinceLastHeartbeat / 1000)}s). Ending session...`);
-      
-      // TODO: Get tutor address and end session
-      // handleSessionEnded(sessionId, 'system', tutorAddress, now);
+router.post('/signal', async (req, res) => {
+  try {
+    const { roomId, type, data, from, to } = req.body;
+
+    if (!roomId || !type || !from) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: roomId, type, from'
+      });
     }
+
+    const room = activeRooms.get(roomId);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: 'Room not found'
+      });
+    }
+
+    // In a real implementation, you would use WebSockets to send this to the other peer
+    // For now, we'll just acknowledge the signal
+    res.json({
+      success: true,
+      message: 'Signal received',
+      signal: {
+        roomId,
+        type,
+        data,
+        from,
+        to,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error handling signal:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
-}, 60000); // Check every minute
+});
 
 module.exports = router;

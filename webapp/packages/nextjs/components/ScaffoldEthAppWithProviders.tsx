@@ -9,6 +9,8 @@ import { Toaster } from "react-hot-toast";
 import { WagmiProvider } from "wagmi";
 import { ThirdwebProvider } from "thirdweb/react";
 import { SocketProvider } from "~~/lib/socket/socketContext";
+import { SessionProvider } from "~~/lib/socket/sessionContext";
+import { SessionNavbar } from "~~/components/session/SessionNavbar";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
@@ -22,6 +24,7 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <div className={`flex flex-col min-h-screen `}>
+        <SessionNavbar />
         <Header />
         <main className="relative flex flex-col flex-1">{children}</main>
         <Footer />
@@ -54,8 +57,10 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     <RainbowKitProvider avatar={BlockieAvatar} theme={mounted ? (isDarkMode ? darkTheme() : lightTheme()) : lightTheme()}>
       <ThirdwebProvider>
         <SocketProvider>
-          <ProgressBar height="3px" color="#2299dd" />
-          <ScaffoldEthApp>{children}</ScaffoldEthApp>
+          <SessionProvider>
+            <ProgressBar height="3px" color="#2299dd" />
+            <ScaffoldEthApp>{children}</ScaffoldEthApp>
+          </SessionProvider>
         </SocketProvider>
       </ThirdwebProvider>
     </RainbowKitProvider>
