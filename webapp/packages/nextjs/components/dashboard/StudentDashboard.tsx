@@ -24,7 +24,7 @@ export const StudentDashboard = ({ onStartLearning, onAddFunds }: StudentDashboa
     client,
     chain: activeChain,
     address: CONTRACTS.LANGDAO,
-    abi: deployedContracts[31337].LangDAO.abi,
+    abi: deployedContracts[activeChain.id as keyof typeof deployedContracts]?.LangDAO?.abi || deployedContracts[31337].LangDAO.abi,
   });
 
   // Get student info
