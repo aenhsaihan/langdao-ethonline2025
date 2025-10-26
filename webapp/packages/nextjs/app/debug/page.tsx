@@ -1,4 +1,5 @@
 import { DebugContracts } from "./_components/DebugContracts";
+import { WebRTCSessionTest } from "~~/components/webrtc/WebRTCSessionTest";
 import type { NextPage } from "next";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
@@ -20,6 +21,9 @@ const Debug: NextPage = () => {
             packages / nextjs / app / debug / page.tsx
           </code>{" "}
         </p>
+      </div>
+      <div className="container mx-auto px-4 py-8">
+        <WebRTCSessionTest />
       </div>
     </>
   );

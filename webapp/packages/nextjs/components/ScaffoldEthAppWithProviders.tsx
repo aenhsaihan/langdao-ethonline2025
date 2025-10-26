@@ -8,6 +8,8 @@ import { useTheme } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { WagmiProvider } from "wagmi";
 import { ThirdwebProvider } from "thirdweb/react";
+import { SocketProvider } from "~~/lib/socket/socketContext";
+import { WebRTCSessionProvider } from "~~/components/webrtc/WebRTCSessionProvider";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
@@ -52,8 +54,12 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     <QueryClientProvider client={queryClient}>
     <RainbowKitProvider avatar={BlockieAvatar} theme={mounted ? (isDarkMode ? darkTheme() : lightTheme()) : lightTheme()}>
       <ThirdwebProvider>
-        <ProgressBar height="3px" color="#2299dd" />
-        <ScaffoldEthApp>{children}</ScaffoldEthApp>
+        <SocketProvider>
+          <WebRTCSessionProvider>
+            <ProgressBar height="3px" color="#2299dd" />
+            <ScaffoldEthApp>{children}</ScaffoldEthApp>
+          </WebRTCSessionProvider>
+        </SocketProvider>
       </ThirdwebProvider>
     </RainbowKitProvider>
     </QueryClientProvider>

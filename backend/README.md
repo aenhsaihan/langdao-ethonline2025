@@ -78,12 +78,19 @@ Backend service for the LangDAO matching system that handles real-time tutor-stu
 - `tutor:set-unavailable` - Mark tutor as unavailable
 - `tutor:incoming-request` - Receive student request
 - `tutor:respond-to-request` - Respond to student request
+- `tutor:student-rejected` - Notified when student selects another tutor
+- `tutor:student-selected` - Notified when student selects this tutor
 
 ### Student Events
 
 - `student:request-tutor` - Request a tutor
-- `student:select-tutor` - Select a responding tutor
+- `student:accept-tutor` - Accept a specific tutor (starts session)
+- `student:reject-tutor` - Reject a specific tutor (continues waiting)
+- `student:select-tutor` - Select a responding tutor (rejects all others)
 - `student:tutor-response` - Receive tutor response
+- `student:tutor-accepted` - Confirmation when tutor acceptance is processed
+- `student:tutor-rejected` - Confirmation when tutor rejection is processed
+- `student:tutor-selected` - Confirmation when tutor selection is processed
 
 ## Matching Flow
 
@@ -92,8 +99,12 @@ Backend service for the LangDAO matching system that handles real-time tutor-stu
 3. **Matching tutors notified** → `tutor:incoming-request`
 4. **Tutors respond** → `tutor:respond-to-request`
 5. **Student sees responses** → `student:tutor-response`
-6. **Student selects tutor** → `student:select-tutor`
-7. **Session starts** → Smart contract transaction
+6. **Student accepts tutor** → `student:accept-tutor`
+   - **OR Student rejects tutor** → `student:reject-tutor`
+   - **OR Student selects tutor** → `student:select-tutor`
+7. **Selected/Accepted tutor notified** → `tutor:student-selected`
+8. **Rejected tutors notified** → `tutor:student-rejected`
+9. **Session starts** → Smart contract transaction
 
 ## Environment Variables
 
