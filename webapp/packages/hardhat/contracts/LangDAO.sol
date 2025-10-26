@@ -31,6 +31,9 @@ interface IERC20 {
 contract LangDAO {
     uint256 constant BUFFER_TIME = 10 minutes;
 
+    // PYUSD token address on Sepolia testnet
+    address public constant PYUSD_TOKEN = 0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9;
+
     // ============ LANGUAGE CONSTANTS ============
     // Using uint8 for efficient storage and gas optimization
     // Each language has a unique ID that maps to ISO 639-1 codes
@@ -205,27 +208,27 @@ contract LangDAO {
 
     // ============ FUNDS MANAGEMENT ============
     /**
-     * Deposit funds into the contract
-     * @param _token Token being deposited
-     * @param _amount Amount of tokens to deposit
+     * Deposit PYUSD funds into the contract
+     * @param _amount Amount of PYUSD tokens to deposit
      */
-    function depositFunds(address _token, uint256 _amount) external onlyRegisteredStudents {
-        IERC20(_token).transferFrom(msg.sender, address(this), _amount);
-        studentBalances[msg.sender][_token] += _amount;
-        emit FundsDeposited(msg.sender, _token, _amount);
+    function depositFunds(uint256 _amount) external onlyRegisteredStudents {
+        require(_amount > 0, "Amount must be greater than 0");
+        IERC20(PYUSD_TOKEN).transferFrom(msg.sender, address(this), _amount);
+        studentBalances[msg.sender][PYUSD_TOKEN] += _amount;
+        emit FundsDeposited(msg.sender, PYUSD_TOKEN, _amount);
     }
 
     /**
-     * Withdraw funds from the contract
-     * @param _token Token being withdrawn
-     * @param _amount Amount of tokens to withdraw
+     * Withdraw PYUSD funds from the contract
+     * @param _amount Amount of PYUSD tokens to withdraw
      */
-    function withdrawFunds(address _token, uint256 _amount) external onlyRegisteredStudents {
+    function withdrawFunds(uint256 _amount) external onlyRegisteredStudents {
         require(!isStudying[msg.sender], "Student is studying");
-        require(studentBalances[msg.sender][_token] >= _amount, "Insufficient balance");
-        IERC20(_token).transfer(msg.sender, _amount);
-        studentBalances[msg.sender][_token] -= _amount;
-        emit FundsWithdrawn(msg.sender, _token, _amount);
+        require(_amount > 0, "Amount must be greater than 0");
+        require(studentBalances[msg.sender][PYUSD_TOKEN] >= _amount, "Insufficient balance");
+        IERC20(PYUSD_TOKEN).transfer(msg.sender, _amount);
+        studentBalances[msg.sender][PYUSD_TOKEN] -= _amount;
+        emit FundsWithdrawn(msg.sender, PYUSD_TOKEN, _amount);
     }
 
     // ============ SESSION MANAGEMENT ============
@@ -236,28 +239,20 @@ contract LangDAO {
      * @dev The student is submitting a transaction to accept the call from the tutor to start the session
      * @param _tutorAddress Address of the tutor
      * @param _language Language being taught/learned
-     * @param _token Token being used for payment
      * @return sessionId The ID of the created session
      */
-    function startSession(
-        address _tutorAddress,
-        uint8 _language,
-        address _token
-    ) external onlyRegisteredStudents returns (uint256) {
+    function startSession(address _tutorAddress, uint8 _language) external onlyRegisteredStudents returns (uint256) {
         require(!activeSessions[_tutorAddress].isActive, "There should be no ongoing session for this tutor");
         require(tutors[_tutorAddress].languages[_language], "Tutor does not offer this language");
         require(this.canAffordRate(msg.sender, _tutorAddress), "Student cannot afford tutor's rate for this language");
-        require(
-            this.hasSufficientBalance(msg.sender, _tutorAddress, _token),
-            "Student does not have sufficient balance"
-        );
+        require(this.hasSufficientBalance(msg.sender, _tutorAddress), "Student does not have sufficient PYUSD balance");
 
         // - Create new session
         sessionCounter++;
         Session memory session = Session({
             student: msg.sender,
             tutor: _tutorAddress,
-            token: _token,
+            token: PYUSD_TOKEN,
             startTime: block.timestamp,
             endTime: 0,
             ratePerSecond: tutors[_tutorAddress].rateForLanguage[_language],
@@ -476,18 +471,15 @@ contract LangDAO {
     }
 
     /**
-     * Check if user has sufficient balance for session
+     * Check if user has sufficient PYUSD balance for session
      * @param _studentAddress Address of the user
-     * @return True if user has sufficient balance
+     * @param _tutorAddress Address of the tutor
+     * @return True if user has sufficient PYUSD balance
      */
-    function hasSufficientBalance(
-        address _studentAddress,
-        address _tutorAddress,
-        address _token
-    ) external view returns (bool) {
+    function hasSufficientBalance(address _studentAddress, address _tutorAddress) external view returns (bool) {
         uint8 language = students[_studentAddress].targetLanguage;
         uint256 ratePerSecond = tutors[_tutorAddress].rateForLanguage[language];
-        return studentBalances[_studentAddress][_token] >= ratePerSecond * BUFFER_TIME;
+        return studentBalances[_studentAddress][PYUSD_TOKEN] >= ratePerSecond * BUFFER_TIME;
     }
 
     // ============ ADMIN FUNCTIONS ============
@@ -532,6 +524,15 @@ contract LangDAO {
         address _student
     ) external view returns (uint8 targetLanguage, uint256 budgetPerSec, bool isRegistered) {
         return (students[_student].targetLanguage, students[_student].budgetPerSec, students[_student].isRegistered);
+    }
+
+    /**
+     * Get student's PYUSD balance
+     * @param _student Address of the student
+     * @return PYUSD balance
+     */
+    function getStudentPYUSDBalance(address _student) external view returns (uint256) {
+        return studentBalances[_student][PYUSD_TOKEN];
     }
 
     /**
