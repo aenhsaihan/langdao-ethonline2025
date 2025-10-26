@@ -29,6 +29,7 @@ const studentRoutes = require("./routes/students");
 const matchingRoutes = require("./routes/matching");
 const webrtcRoutes = require("./routes/webrtc");
 const matchingService = require("./services/matchingService");
+const sessionService = require("./services/sessionService");
 
 const app = express();
 const server = http.createServer(app);
@@ -146,6 +147,9 @@ const io = socketIo(server, {
   pingTimeout: 60000,
   pingInterval: 25000,
 });
+
+// Make io available globally for WebRTC events
+global.io = io;
 
 // Socket rate limiting configuration
 const SOCKET_RATE_LIMIT = 10; // requests per minute per socket
@@ -536,6 +540,16 @@ io.on("connection", (socket) => {
       }
       const reqData = result.request;
       const studentSocketId = reqData.studentSocketId;
+
+      // ✨ CRITICAL: Store session mapping for WebRTC session end
+      // This allows us to find the tutor address when the session ends
+      await sessionService.storeSessionMapping(
+        data.requestId, // sessionId
+        reqData.studentAddress,
+        data.tutorAddress.toLowerCase(),
+        reqData.language
+      );
+      console.log(`✅ Session mapping stored: ${data.requestId} -> ${data.tutorAddress}`);
 
       // Get tutor info to send complete data to student
       const tutorInfo = await matchingService.getTutorByAddress(

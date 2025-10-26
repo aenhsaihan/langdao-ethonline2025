@@ -75,7 +75,8 @@ class ContractService {
           this.abi = [
             "function getTutor(address) view returns (string memory name, string[] memory languages, uint256 ratePerSecond, uint256 totalSessions, uint256 rating, bool isRegistered)",
             "function getStudent(address) view returns (string memory name, uint256 totalSessions, uint256 averageRating, bool isRegistered)",
-            "function recordSession(address tutor, address student, uint256 duration, uint256 cost) external"
+            "function recordSession(address tutor, address student, uint256 duration, uint256 cost) external",
+            "function endSession(address tutorAddress) external"
           ];
           console.log('ContractService: Using fallback ABI');
         }

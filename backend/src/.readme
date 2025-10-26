@@ -1,0 +1,257 @@
+# WebRTC Session End Troubleshooting Guide
+
+## Problem Overview
+
+When WebRTC video calls end, the backend should automatically call `endSession(tutorAddress)` on the smart contract to process payment without user interaction. However, the system is not working as expected.
+
+## Architecture Flow
+
+```
+Student/Tutor → WebRTC Service → Backend API → Smart Contract
+     ↓              ↓              ↓              ↓
+  End Call    →  Send Event  →  Detect Event → endSession()
+```
+
+## Root Cause Analysis
+
+### Issue #1: WebRTC Service Configuration
+**Problem**: The WebRTC server doesn't know where to send events to the backend.
+
+**Location**: `backend/webRTC-implementation-LangDAO/server.js` line 15
+```javascript
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000/api/webrtc-events';
+```
+
+**Issue**: `BACKEND_URL` environment variable is not set, causing events to fail or go to wrong endpoint.
+
+### Issue #2: Backend Endpoint Never Hit
+**Problem**: The backend endpoint `POST /api/webrtc-events` receives no requests.
+
+**Location**: `backend/src/routes/webrtc.js` line 25
+```javascript
+router.post('/webrtc-events', async (req, res) => {
+  // This code never executes
+```
+
+**Evidence**: No console logs showing `📡 WebRTC Event received:`
+
+### Issue #3: Smart Contract Transaction Never Triggered
+**Problem**: Since backend endpoint isn't hit, blockchain transactions never happen.
+
+**Location**: `backend/src/routes/webrtc.js` line 118
+```javascript
+const tx = await langDAOContract.endSession(tutorAddress); // Never executes
+```
+
+## Solution Steps
+
+### Step 1: Configure WebRTC Service
+
+Set the backend URL environment variable:
+
+```bash
+# For local development
+export BACKEND_URL=http://localhost:4000/api/webrtc-events
+
+# Or create .env file in webRTC-implementation-LangDAO directory
+echo "BACKEND_URL=http://localhost:4000/api/webrtc-events" > backend/webRTC-implementation-LangDAO/.env
+```
+
+### Step 2: Start Services in Correct Order
+
+```bash
+# Terminal 1: Start main backend
+cd backend
+npm run dev
+
+# Terminal 2: Start WebRTC server with environment variable
+cd backend/webRTC-implementation-LangDAO
+BACKEND_URL=http://localhost:4000/api/webrtc-events node server.js
+```
+
+### Step 3: Verify Connection
+
+You should see these logs when WebRTC server starts:
+```bash
+Server running on port 3000
+```
+
+When events are sent, you should see:
+```bash
+# In WebRTC server console:
+Backend notified: user-connected
+Backend notified: session-heartbeat
+Backend notified: session-ended
+
+# In main backend console:
+📡 WebRTC Event received: { type: 'user-connected', ... }
+📡 WebRTC Event received: { type: 'session-heartbeat', ... }
+📡 WebRTC Event received: { type: 'session-ended', ... }
+```
+
+## Expected Event Flow
+
+### 1. User Joins Call
+```json
+{
+  "type": "user-connected",
+  "sessionId": "session_123",
+  "userRole": "student",
+  "timestamp": 1234567890
+}
+```
+
+### 2. Heartbeat (Every 10 seconds)
+```json
+{
+  "type": "session-heartbeat",
+  "sessionId": "session_123",
+  "userRole": "student",
+  "userAddress": "0x...",
+  "timestamp": 1234567890,
+  "elapsedSeconds": 30
+}
+```
+
+### 3. User Disconnects
+```json
+{
+  "type": "user-disconnected",
+  "sessionId": "session_123",
+  "userRole": "student",
+  "reason": "connection-closed",
+  "timestamp": 1234567890
+}
+```
+
+### 4. Call Ends
+```json
+{
+  "type": "session-ended",
+  "sessionId": "session_123",
+  "endedBy": "student",
+  "userAddress": "0x...",
+  "timestamp": 1234567890
+}
+```
+
+## Expected Backend Logs (When Working)
+
+```bash
+📡 WebRTC Event received: { type: 'session-ended', sessionId: 'session_123', ... }
+🛑 Session ended by student: session_123
+Session details: Student=0x..., Tutor=0x...
+🔗 Calling endSession on smart contract for tutor: 0x...
+🔑 Using backend wallet: 0x...
+📝 Transaction sent: 0x...
+✅ Session ended on blockchain. Gas used: 123456
+📡 Emitted webrtc:session-completed event to frontend
+🧹 Session cleanup completed for session_123
+```
+
+## Testing the Fix
+
+### 1. Test Backend Connectivity
+```bash
+# Test the endpoint directly
+curl -X POST http://localhost:4000/api/webrtc-events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "session-ended",
+    "sessionId": "test123",
+    "endedBy": "student",
+    "timestamp": 1234567890
+  }'
+```
+
+Expected response: `{"success":true,"message":"Event processed"}`
+
+### 2. Test WebRTC Debug Endpoint
+```bash
+curl http://localhost:4000/api/webrtc-debug
+```
+
+Should return backend configuration info including contract address and wallet balance.
+
+### 3. Test Manual Session End
+```bash
+curl -X POST http://localhost:4000/api/webrtc-test-end \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "test123",
+    "tutorAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+  }'
+```
+
+This should trigger the blockchain transaction directly.
+
+## Common Issues & Solutions
+
+### Issue: "Backend notification failed"
+**Cause**: WebRTC server can't reach backend
+**Solution**: Verify backend is running on port 4000 and `BACKEND_URL` is correct
+
+### Issue: "Session mapping not found"
+**Cause**: Session wasn't properly stored when it started
+**Solution**: Ensure session mapping is created when sessions begin
+
+### Issue: "Contract error" 
+**Cause**: Smart contract revert or insufficient gas
+**Solution**: Check contract state, ensure tutor has active session, verify wallet has ETH
+
+### Issue: No blockchain transaction
+**Cause**: Backend endpoint not receiving events
+**Solution**: Set `BACKEND_URL` environment variable and restart WebRTC server
+
+## Environment Variables Checklist
+
+### Main Backend (.env)
+```bash
+PRIVATE_KEY=58e6470c1c094d022954775837d2848cda68c011b8d5e1ac55c840a4f2e9e6d7
+RPC_URL=http://localhost:8545
+REDIS_URL=redis://localhost:6379
+PORT=4000
+```
+
+### WebRTC Service (.env)
+```bash
+BACKEND_URL=http://localhost:4000/api/webrtc-events
+PORT=3000
+```
+
+## File Locations
+
+- **Main Backend**: `backend/src/routes/webrtc.js`
+- **WebRTC Server**: `backend/webRTC-implementation-LangDAO/server.js`
+- **Smart Contract**: `webapp/packages/hardhat/contracts/LangDAO.sol`
+
+## Quick Fix Summary
+
+**The entire problem is solved by setting one environment variable:**
+
+```bash
+export BACKEND_URL=http://localhost:4000/api/webrtc-events
+cd backend/webRTC-implementation-LangDAO
+node server.js
+```
+
+Once this is done, WebRTC events will flow to your backend, which will automatically process blockchain transactions when sessions end.
+
+## Production Deployment
+
+For production, ensure:
+
+1. **WebRTC Service**: Set `BACKEND_URL` to your production backend URL
+2. **HTTPS**: Both services must use HTTPS in production
+3. **CORS**: Backend must allow requests from WebRTC service domain
+4. **Firewall**: Ensure WebRTC service can reach backend API endpoints
+
+## Support
+
+If issues persist after following this guide:
+
+1. Check both server console logs for errors
+2. Verify network connectivity between services
+3. Test endpoints manually with curl
+4. Ensure all environment variables are set correctly
+5. Confirm smart contract is deployed and accessible
