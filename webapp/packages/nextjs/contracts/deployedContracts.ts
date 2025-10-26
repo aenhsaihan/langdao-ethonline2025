@@ -149,9 +149,9 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "uint8",
+              internalType: "uint256",
               name: "language",
-              type: "uint8",
+              type: "uint256",
             },
           ],
           name: "SessionStarted",
@@ -168,9 +168,9 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "uint8",
+              internalType: "uint256",
               name: "targetLanguage",
-              type: "uint8",
+              type: "uint256",
             },
             {
               indexed: false,
@@ -193,9 +193,9 @@ const deployedContracts = {
             },
             {
               indexed: false,
-              internalType: "uint8[]",
+              internalType: "uint256[]",
               name: "languages",
-              type: "uint8[]",
+              type: "uint256[]",
             },
             {
               indexed: false,
@@ -211,7 +211,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "tutor",
               type: "address",
             },
           ],
@@ -253,9 +253,9 @@ const deployedContracts = {
               type: "uint256",
             },
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "language",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "uint256",
@@ -406,9 +406,9 @@ const deployedContracts = {
                   type: "uint256",
                 },
                 {
-                  internalType: "uint8",
+                  internalType: "uint256",
                   name: "language",
-                  type: "uint8",
+                  type: "uint256",
                 },
                 {
                   internalType: "uint256",
@@ -440,9 +440,9 @@ const deployedContracts = {
           name: "getStudentInfo",
           outputs: [
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "targetLanguage",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "uint256",
@@ -495,9 +495,9 @@ const deployedContracts = {
               type: "address",
             },
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "_language",
-              type: "uint8",
+              type: "uint256",
             },
           ],
           name: "getTutorLanguage",
@@ -519,9 +519,9 @@ const deployedContracts = {
               type: "address",
             },
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "_language",
-              type: "uint8",
+              type: "uint256",
             },
           ],
           name: "getTutorRate",
@@ -587,7 +587,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "student",
               type: "address",
             },
           ],
@@ -600,44 +600,6 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "string",
-              name: "_isoCode",
-              type: "string",
-            },
-          ],
-          name: "isoToLanguage",
-          outputs: [
-            {
-              internalType: "uint8",
-              name: "",
-              type: "uint8",
-            },
-          ],
-          stateMutability: "pure",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint8",
-              name: "_language",
-              type: "uint8",
-            },
-          ],
-          name: "languageToIso",
-          outputs: [
-            {
-              internalType: "string",
-              name: "",
-              type: "string",
-            },
-          ],
-          stateMutability: "pure",
           type: "function",
         },
         {
@@ -656,9 +618,9 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "_targetLanguage",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "uint256",
@@ -674,9 +636,9 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint8[]",
+              internalType: "uint256[]",
               name: "_languages",
-              type: "uint8[]",
+              type: "uint256[]",
             },
             {
               internalType: "uint256",
@@ -706,7 +668,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
-              name: "",
+              name: "sessionId",
               type: "uint256",
             },
           ],
@@ -748,9 +710,9 @@ const deployedContracts = {
               type: "uint256",
             },
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "language",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "uint256",
@@ -774,9 +736,9 @@ const deployedContracts = {
               type: "address",
             },
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "_language",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "address",
@@ -799,12 +761,12 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "student",
               type: "address",
             },
             {
               internalType: "address",
-              name: "",
+              name: "token",
               type: "address",
             },
           ],
@@ -812,7 +774,7 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint256",
-              name: "",
+              name: "balance",
               type: "uint256",
             },
           ],
@@ -823,16 +785,16 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "student",
               type: "address",
             },
           ],
           name: "students",
           outputs: [
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "targetLanguage",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "uint256",
@@ -852,7 +814,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "tutor",
               type: "address",
             },
           ],
@@ -893,9 +855,9 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "uint8",
+              internalType: "uint256",
               name: "_language",
-              type: "uint8",
+              type: "uint256",
             },
             {
               internalType: "uint256",
@@ -912,7 +874,7 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
+              name: "user",
               type: "address",
             },
             {
@@ -925,7 +887,7 @@ const deployedContracts = {
           outputs: [
             {
               internalType: "uint256",
-              name: "",
+              name: "ids",
               type: "uint256",
             },
           ],
@@ -966,7 +928,7 @@ const deployedContracts = {
       deployedOnBlock: 1,
     },
     MockERC20: {
-      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
       abi: [
         {
           inputs: [
@@ -1327,7 +1289,1344 @@ const deployedContracts = {
         transfer: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
         transferFrom: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       },
-      deployedOnBlock: 3,
+      deployedOnBlock: 5,
+    },
+  },
+  11155111: {
+    LangDAO: {
+      address: "0x4Fb5675e6baE48C95c1D4f1b154E3d5e8E36112C",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_owner",
+              type: "address",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "FundsDeposited",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "FundsWithdrawn",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "PaymentProcessed",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "sessionId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "tutorAddress",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "duration",
+              type: "uint256",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "totalPaid",
+              type: "uint256",
+            },
+          ],
+          name: "SessionEnded",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "uint256",
+              name: "sessionId",
+              type: "uint256",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "tutor",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "language",
+              type: "uint8",
+            },
+          ],
+          name: "SessionStarted",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint8",
+              name: "targetLanguage",
+              type: "uint8",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "budgetPerSec",
+              type: "uint256",
+            },
+          ],
+          name: "StudentRegistered",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "user",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint8[]",
+              name: "languages",
+              type: "uint8[]",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "ratePerHour",
+              type: "uint256",
+            },
+          ],
+          name: "TutorRegistered",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "PYUSD_TOKEN",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "activeSessions",
+          outputs: [
+            {
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "tutor",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "startTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "endTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "ratePerSecond",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalPaid",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "language",
+              type: "uint8",
+            },
+            {
+              internalType: "uint256",
+              name: "id",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isActive",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_studentAddress",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "_tutorAddress",
+              type: "address",
+            },
+          ],
+          name: "canAffordRate",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_amount",
+              type: "uint256",
+            },
+          ],
+          name: "depositFunds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "emergencyEndSession",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "tutorAddress",
+              type: "address",
+            },
+          ],
+          name: "endSession",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "getCurrentSessionCost",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_sessionId",
+              type: "uint256",
+            },
+          ],
+          name: "getSession",
+          outputs: [
+            {
+              components: [
+                {
+                  internalType: "address",
+                  name: "student",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "tutor",
+                  type: "address",
+                },
+                {
+                  internalType: "address",
+                  name: "token",
+                  type: "address",
+                },
+                {
+                  internalType: "uint256",
+                  name: "startTime",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "endTime",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "ratePerSecond",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "totalPaid",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint8",
+                  name: "language",
+                  type: "uint8",
+                },
+                {
+                  internalType: "uint256",
+                  name: "id",
+                  type: "uint256",
+                },
+                {
+                  internalType: "bool",
+                  name: "isActive",
+                  type: "bool",
+                },
+              ],
+              internalType: "struct LangDAO.Session",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_student",
+              type: "address",
+            },
+          ],
+          name: "getStudentInfo",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "targetLanguage",
+              type: "uint8",
+            },
+            {
+              internalType: "uint256",
+              name: "budgetPerSec",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_student",
+              type: "address",
+            },
+          ],
+          name: "getStudentPYUSDBalance",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutor",
+              type: "address",
+            },
+          ],
+          name: "getTutorInfo",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "totalEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "sessionCount",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutor",
+              type: "address",
+            },
+            {
+              internalType: "uint8",
+              name: "_language",
+              type: "uint8",
+            },
+          ],
+          name: "getTutorLanguage",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutor",
+              type: "address",
+            },
+            {
+              internalType: "uint8",
+              name: "_language",
+              type: "uint8",
+            },
+          ],
+          name: "getTutorRate",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_userAddress",
+              type: "address",
+            },
+          ],
+          name: "getUserSessions",
+          outputs: [
+            {
+              internalType: "uint256[]",
+              name: "",
+              type: "uint256[]",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_studentAddress",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "_tutorAddress",
+              type: "address",
+            },
+          ],
+          name: "hasSufficientBalance",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "isStudying",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "_isoCode",
+              type: "string",
+            },
+          ],
+          name: "isoToLanguage",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "_language",
+              type: "uint8",
+            },
+          ],
+          name: "languageToIso",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "pure",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "owner",
+          outputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "_targetLanguage",
+              type: "uint8",
+            },
+            {
+              internalType: "uint256",
+              name: "_budgetPerSec",
+              type: "uint256",
+            },
+          ],
+          name: "registerStudent",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8[]",
+              name: "_languages",
+              type: "uint8[]",
+            },
+            {
+              internalType: "uint256",
+              name: "_ratePerSecond",
+              type: "uint256",
+            },
+          ],
+          name: "registerTutor",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "sessionCounter",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "sessionHistory",
+          outputs: [
+            {
+              internalType: "address",
+              name: "student",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "tutor",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "token",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "startTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "endTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "ratePerSecond",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "totalPaid",
+              type: "uint256",
+            },
+            {
+              internalType: "uint8",
+              name: "language",
+              type: "uint8",
+            },
+            {
+              internalType: "uint256",
+              name: "id",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isActive",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "_tutorAddress",
+              type: "address",
+            },
+            {
+              internalType: "uint8",
+              name: "_language",
+              type: "uint8",
+            },
+          ],
+          name: "startSession",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "studentBalances",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "students",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "targetLanguage",
+              type: "uint8",
+            },
+            {
+              internalType: "uint256",
+              name: "budgetPerSec",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+          ],
+          name: "tutors",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "totalEarnings",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "sessionCount",
+              type: "uint256",
+            },
+            {
+              internalType: "bool",
+              name: "isRegistered",
+              type: "bool",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_budgetPerSec",
+              type: "uint256",
+            },
+          ],
+          name: "updateBudget",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint8",
+              name: "_language",
+              type: "uint8",
+            },
+            {
+              internalType: "uint256",
+              name: "_ratePerSecond",
+              type: "uint256",
+            },
+          ],
+          name: "updateRate",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          name: "userSessions",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "withdraw",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_amount",
+              type: "uint256",
+            },
+          ],
+          name: "withdrawFunds",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          stateMutability: "payable",
+          type: "receive",
+        },
+      ],
+      inheritedFunctions: {},
+      deployedOnBlock: 9493794,
+    },
+    MockERC20: {
+      address: "0xD9a1F80dFa4917fD80078cBC20d96cc687B9C49F",
+      abi: [
+        {
+          inputs: [
+            {
+              internalType: "string",
+              name: "name",
+              type: "string",
+            },
+            {
+              internalType: "string",
+              name: "symbol",
+              type: "string",
+            },
+            {
+              internalType: "uint256",
+              name: "initialSupply",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "constructor",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "spender",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "allowance",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "needed",
+              type: "uint256",
+            },
+          ],
+          name: "ERC20InsufficientAllowance",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "balance",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "needed",
+              type: "uint256",
+            },
+          ],
+          name: "ERC20InsufficientBalance",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "approver",
+              type: "address",
+            },
+          ],
+          name: "ERC20InvalidApprover",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "receiver",
+              type: "address",
+            },
+          ],
+          name: "ERC20InvalidReceiver",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "sender",
+              type: "address",
+            },
+          ],
+          name: "ERC20InvalidSender",
+          type: "error",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "spender",
+              type: "address",
+            },
+          ],
+          name: "ERC20InvalidSpender",
+          type: "error",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "spender",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "value",
+              type: "uint256",
+            },
+          ],
+          name: "Approval",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            {
+              indexed: true,
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              indexed: true,
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              indexed: false,
+              internalType: "uint256",
+              name: "value",
+              type: "uint256",
+            },
+          ],
+          name: "Transfer",
+          type: "event",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "owner",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "spender",
+              type: "address",
+            },
+          ],
+          name: "allowance",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "spender",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "value",
+              type: "uint256",
+            },
+          ],
+          name: "approve",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "account",
+              type: "address",
+            },
+          ],
+          name: "balanceOf",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "decimals",
+          outputs: [
+            {
+              internalType: "uint8",
+              name: "",
+              type: "uint8",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+          ],
+          name: "mint",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "name",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "symbol",
+          outputs: [
+            {
+              internalType: "string",
+              name: "",
+              type: "string",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "totalSupply",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "value",
+              type: "uint256",
+            },
+          ],
+          name: "transfer",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "from",
+              type: "address",
+            },
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "value",
+              type: "uint256",
+            },
+          ],
+          name: "transferFrom",
+          outputs: [
+            {
+              internalType: "bool",
+              name: "",
+              type: "bool",
+            },
+          ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ],
+      inheritedFunctions: {
+        allowance: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        approve: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        balanceOf: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        decimals: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        name: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        symbol: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        totalSupply: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        transfer: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        transferFrom: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+      },
+      deployedOnBlock: 9493795,
     },
   },
 } as const;
