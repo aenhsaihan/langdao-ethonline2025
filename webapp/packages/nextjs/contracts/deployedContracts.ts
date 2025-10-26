@@ -2629,6 +2629,14 @@ const deployedContracts = {
       deployedOnBlock: 9493795,
     },
   },
+  11155111: {
+    LangDAO: {
+      address: "0x4Fb5675e6baE48C95c1D4f1b154E3d5e8E36112C",
+      // Using the same ABI as localhost since the contract is identical
+      abi: [] as any, // Will fall back to localhost ABI in code
+      inheritedFunctions: {},
+    },
+  },
 } as const;
 
 export default deployedContracts satisfies GenericContractsDeclaration;

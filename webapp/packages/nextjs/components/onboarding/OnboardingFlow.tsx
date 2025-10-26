@@ -25,7 +25,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>("role");
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
   const [isCheckingRegistration, setIsCheckingRegistration] = useState(true);
-  
+
   const account = useActiveAccount();
 
   // Create contract instance using deployed contract ABI
@@ -33,7 +33,7 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
     client,
     chain: activeChain,
     address: CONTRACTS.LANGDAO,
-    abi: deployedContracts[31337].LangDAO.abi,
+    abi: deployedContracts[activeChain.id as keyof typeof deployedContracts]?.LangDAO?.abi || deployedContracts[31337].LangDAO.abi,
   });
 
   // Check if user is already registered as student
@@ -167,8 +167,8 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
               Welcome to LangDAO!
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-8">
-              Your account is set up and ready to go. 
-              {selectedRole === "student" 
+              Your account is set up and ready to go.
+              {selectedRole === "student"
                 ? " Start finding tutors and begin your language learning journey!"
                 : " Students can now find and book sessions with you!"
               }
@@ -215,14 +215,14 @@ export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
         )}
 
         {currentStep === "dashboard" && (
-          <StudentDashboard 
-            onStartLearning={handleStartLearning} 
+          <StudentDashboard
+            onStartLearning={handleStartLearning}
             onAddFunds={handleAddFunds}
           />
         )}
 
         {currentStep === "tutor-availability" && (
-          <TutorAvailabilityFlow 
+          <TutorAvailabilityFlow
             onBack={handleBack}
           />
         )}

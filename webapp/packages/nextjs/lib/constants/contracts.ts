@@ -1,13 +1,16 @@
 import deployedContracts from "../../contracts/deployedContracts";
 
-// Contract addresses
+// Contract addresses for Sepolia testnet
 export const CONTRACTS = {
-    // PYUSD token contract address - uses MockERC20 for local development
-    PYUSD: deployedContracts[31337]?.MockERC20?.address as `0x${string}` || "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8" as const,
+    // PYUSD token contract address on Sepolia (6 decimals)
+    PYUSD: "0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9" as const,
 
-    // LangDAO contract address - automatically uses deployed contract
-    LANGDAO: deployedContracts[31337]?.LangDAO?.address as `0x${string}` || "0x5FbDB2315678afecb367f032d93F642f64180aa3" as const,
+    // LangDAO contract address on Sepolia
+    LANGDAO: "0x4Fb5675e6baE48C95c1D4f1b154E3d5e8E36112C" as const,
 } as const;
+
+// PYUSD has 6 decimals (not 18 like most ERC20 tokens)
+export const PYUSD_DECIMALS = 6;
 
 // Language mappings - matches LangDAO.sol language constants
 // IDs correspond to uint8 values in the smart contract

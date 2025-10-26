@@ -36,9 +36,19 @@ export const useWebRTCSession = () => {
     if (pendingSession) {
       try {
         const sessionData = JSON.parse(pendingSession);
+        // Check if session is too old (more than 2 hours)
+        const sessionAge = Date.now() - (sessionData.startTime || 0);
+        const TWO_HOURS = 2 * 60 * 60 * 1000;
+        
+        if (sessionAge > TWO_HOURS) {
+          console.log('Session too old, clearing...');
+          sessionStorage.removeItem('pendingSession');
+          return;
+        }
+        
         setState(prev => ({
           ...prev,
-          currentSession: { ...sessionData, startTime: Date.now() },
+          currentSession: { ...sessionData, startTime: sessionData.startTime || Date.now() },
           isSessionActive: true,
         }));
       } catch (error) {

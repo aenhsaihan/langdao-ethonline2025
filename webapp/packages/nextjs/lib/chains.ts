@@ -1,4 +1,5 @@
 import { defineChain } from "thirdweb";
+import { sepolia } from "thirdweb/chains";
 
 // Local Hardhat chain configuration
 export const hardhatChain = defineChain({
@@ -18,7 +19,5 @@ export const hardhatChain = defineChain({
   ],
 });
 
-// Export the chain to use in your app
-export const activeChain = process.env.NODE_ENV === 'development' 
-  ? hardhatChain 
-  : hardhatChain; // You can change this to mainnet/testnet for production
+// Export the chain to use in your app - using Sepolia for now
+export const activeChain = sepolia;

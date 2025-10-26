@@ -3,14 +3,15 @@ const router = express.Router();
 const { ethers } = require('ethers');
 const sessionService = require('../services/sessionService');
 
-// Import contract ABI and address from hardhat deployment
-const langDAODeployment = require('../../../webapp/packages/hardhat/deployments/localhost/LangDAO.json');
-const LANGDAO_ABI = langDAODeployment.abi;
-const LANGDAO_ADDRESS = langDAODeployment.address;
+// Import contract ABI from hardhat artifacts
+const langDAOArtifact = require('../../../webapp/packages/hardhat/artifacts/contracts/LangDAO.sol/LangDAO.json');
+const LANGDAO_ABI = langDAOArtifact.abi;
+// Use deployed contract address from environment variable
+const LANGDAO_ADDRESS = process.env.CONTRACT_ADDRESS || '0x4Fb5675e6baE48C95c1D4f1b154E3d5e8E36112C';
 
 // Setup provider and wallet for backend transactions
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
-const backendWallet = new ethers.Wallet(process.env.BACKEND_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', provider);
+const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://sepolia.infura.io/v3/3741fbd748fd416e8a866279e62ad5ef');
+const backendWallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Create contract instance
 const langDAOContract = new ethers.Contract(LANGDAO_ADDRESS, LANGDAO_ABI, backendWallet);

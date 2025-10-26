@@ -21,7 +21,7 @@ class ContractService {
 
     this.initializing = (async () => {
       try {
-        const rpcUrl = process.env.RPC_URL || 'http://localhost:8545';
+        const rpcUrl = process.env.RPC_URL || 'https://sepolia.infura.io/v3/3741fbd748fd416e8a866279e62ad5ef';
         const contractAddress = process.env.CONTRACT_ADDRESS;
 
         console.log('ContractService: Initializing...');
