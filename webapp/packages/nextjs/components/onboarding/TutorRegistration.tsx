@@ -38,7 +38,9 @@ export const TutorRegistration = ({ onComplete, onBack }: TutorRegistrationProps
       return;
     }
 
-    const ratePerSecond = Math.floor((parseFloat(ratePerHour) / 3600) * 1e18); // Convert to wei per second
+    // Convert hourly rate to per-second, then to contract units (16 decimals)
+    // ratePerHour is in PYUSD (e.g., 15), divide by 3600 for per-second, then multiply by 1e16
+    const ratePerSecond = Math.floor((parseFloat(ratePerHour) / 3600) * 1e6);
 
     setIsSubmitting(true);
 

@@ -11,7 +11,7 @@ class ContractService {
     this.initialized = false;
     this.initializing = null;
     this.enableFallback = (process.env.ALLOW_CONTRACT_FALLBACK || 'true').toLowerCase() !== 'false';
-    
+
     console.log('ContractService: Constructor called, enableFallback:', this.enableFallback);
   }
 
@@ -21,7 +21,7 @@ class ContractService {
 
     this.initializing = (async () => {
       try {
-        const rpcUrl = process.env.RPC_URL || 'http://localhost:8545';
+        const rpcUrl = process.env.RPC_URL || 'https://sepolia.infura.io/v3/3741fbd748fd416e8a866279e62ad5ef';
         const contractAddress = process.env.CONTRACT_ADDRESS;
 
         console.log('ContractService: Initializing...');
@@ -39,7 +39,7 @@ class ContractService {
 
         // Test provider connection
         this.provider = new ethers.JsonRpcProvider(rpcUrl);
-        
+
         try {
           const network = await this.provider.getNetwork();
           console.log('ContractService: Connected to network:', network.chainId);
@@ -52,10 +52,10 @@ class ContractService {
         // Try to load ABI from deployment artifact
         let abiPath = process.env.CONTRACT_ABI_PATH;
         if (!abiPath) {
-          // Default to Hardhat deployment artifact
+          // Default to Sepolia deployment artifact
           abiPath = path.resolve(
             __dirname,
-            '../../../webapp/packages/hardhat/deployments/localhost/LangDAO.json'
+            '../../../webapp/packages/hardhat/deployments/sepolia/LangDAO.json'
           );
         }
 
@@ -132,12 +132,12 @@ class ContractService {
     if (this.contract) {
       try {
         console.log('ContractService: Calling getTutor for address:', address);
-        
+
         // Try the contract call
         const tutorData = await this.contract.getTutor(address);
-        
+
         console.log('ContractService: Got tutor data from contract:', tutorData);
-        
+
         return {
           address,
           name: tutorData[0] || tutorData.name || `Tutor_${address.slice(-4)}`,
@@ -179,9 +179,9 @@ class ContractService {
     if (this.contract) {
       try {
         console.log('ContractService: Calling getStudent for address:', address);
-        
+
         const studentData = await this.contract.getStudent(address);
-        
+
         return {
           address,
           name: studentData[0] || studentData.name || `Student_${address.slice(-4)}`,

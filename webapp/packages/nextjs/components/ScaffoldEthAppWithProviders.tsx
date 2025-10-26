@@ -10,6 +10,7 @@ import { WagmiProvider } from "wagmi";
 import { ThirdwebProvider } from "thirdweb/react";
 import { SocketProvider } from "~~/lib/socket/socketContext";
 import { WebRTCSessionProvider } from "~~/components/webrtc/WebRTCSessionProvider";
+import { ActiveSessionPrompt } from "~~/components/session/ActiveSessionPrompt";
 import { Footer } from "~~/components/Footer";
 import { Header } from "~~/components/Header";
 import { BlockieAvatar } from "~~/components/scaffold-eth";
@@ -24,6 +25,7 @@ const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
     <>
       <div className={`flex flex-col min-h-screen `}>
         <Header />
+        <ActiveSessionPrompt />
         <main className="relative flex flex-col flex-1">{children}</main>
         <Footer />
       </div>
