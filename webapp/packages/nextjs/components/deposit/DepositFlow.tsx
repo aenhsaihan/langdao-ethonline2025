@@ -6,7 +6,7 @@ import { parseUnits, formatUnits } from "viem";
 import toast from "react-hot-toast";
 import { DepositSlider } from "./DepositSlider";
 
-import { CONTRACTS } from "../../lib/constants/contracts";
+import { CONTRACTS, PYUSD_DECIMALS } from "../../lib/constants/contracts";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 interface DepositFlowProps {
@@ -21,11 +21,11 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
   const [isDepositing, setIsDepositing] = useState(false);
 
   const { address } = useAccount();
-  
+
   // Get MockERC20 token balance (PYUSD)
-  const { 
-    data: tokenBalance, 
-    isLoading: isTokenBalanceLoading 
+  const {
+    data: tokenBalance,
+    isLoading: isTokenBalanceLoading
   } = useScaffoldReadContract({
     contractName: "MockERC20",
     functionName: "balanceOf",
@@ -33,9 +33,9 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
   });
 
   // Get current allowance for LangDAO contract
-  const { 
-    data: allowance, 
-    isLoading: isAllowanceLoading 
+  const {
+    data: allowance,
+    isLoading: isAllowanceLoading
   } = useScaffoldReadContract({
     contractName: "MockERC20",
     functionName: "allowance",
@@ -43,10 +43,10 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
   });
 
   // Get student's current balance in LangDAO contract
-  const { 
-    data: contractBalance, 
+  const {
+    data: contractBalance,
     isLoading: isContractBalanceLoading,
-    error: contractBalanceError 
+    error: contractBalanceError
   } = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "studentBalances",
@@ -54,9 +54,9 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
   });
 
   // Debug: Check if user is registered as student
-  const { 
+  const {
     data: studentInfo,
-    isLoading: isStudentInfoLoading 
+    isLoading: isStudentInfoLoading
   } = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "getStudentInfo",
@@ -71,9 +71,9 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
     contractName: "LangDAO",
   });
 
-  const balance = tokenBalance ? parseFloat(formatUnits(tokenBalance, 18)) : 0;
-  const currentAllowance = allowance ? parseFloat(formatUnits(allowance, 18)) : 0;
-  const currentContractBalance = contractBalance ? parseFloat(formatUnits(contractBalance, 18)) : 0;
+  const balance = tokenBalance ? parseFloat(formatUnits(tokenBalance, PYUSD_DECIMALS)) : 0;
+  const currentAllowance = allowance ? parseFloat(formatUnits(allowance, PYUSD_DECIMALS)) : 0;
+  const currentContractBalance = contractBalance ? parseFloat(formatUnits(contractBalance, PYUSD_DECIMALS)) : 0;
 
   const isLoadingBalances = isTokenBalanceLoading || isContractBalanceLoading;
   const isStudentRegistered = studentInfo ? studentInfo[2] : false; // isRegistered is the 3rd element
@@ -97,7 +97,7 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
       toast.error("Insufficient balance");
       return;
     }
-    
+
     // Check if we need approval
     if (currentAllowance < depositAmount) {
       setStep("approval");
@@ -113,15 +113,15 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
     }
 
     setIsApproving(true);
-    
+
     try {
-      const depositAmountWei = parseUnits(depositAmount.toString(), 18);
-      
+      const depositAmountWei = parseUnits(depositAmount.toString(), PYUSD_DECIMALS);
+
       await writeApproval({
         functionName: "approve",
         args: [CONTRACTS.LANGDAO, depositAmountWei],
       });
-      
+
       toast.success("Approval successful!");
       setStep("deposit");
     } catch (err) {
@@ -139,15 +139,15 @@ export const DepositFlow = ({ onComplete, onBack }: DepositFlowProps) => {
     }
 
     setIsDepositing(true);
-    
+
     try {
-      const depositAmountWei = parseUnits(depositAmount.toString(), 18);
-      
+      const depositAmountWei = parseUnits(depositAmount.toString(), PYUSD_DECIMALS);
+
       await writeDeposit({
         functionName: "depositFunds",
-        args: [CONTRACTS.PYUSD, depositAmountWei], // MockERC20 address
+        args: [depositAmountWei],
       });
-      
+
       toast.success("Deposit successful!");
       onComplete();
     } catch (err) {

@@ -2265,7 +2265,7 @@ const deployedContracts = {
       deployedOnBlock: 9493794,
     },
     MockERC20: {
-      address: "0xD9a1F80dFa4917fD80078cBC20d96cc687B9C49F",
+      address: "0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9",
       abi: [
         {
           inputs: [
@@ -2627,14 +2627,6 @@ const deployedContracts = {
         transferFrom: "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       },
       deployedOnBlock: 9493795,
-    },
-  },
-  11155111: {
-    LangDAO: {
-      address: "0x4Fb5675e6baE48C95c1D4f1b154E3d5e8E36112C",
-      // Using the same ABI as localhost since the contract is identical
-      abi: [] as any, // Will fall back to localhost ABI in code
-      inheritedFunctions: {},
     },
   },
 } as const;

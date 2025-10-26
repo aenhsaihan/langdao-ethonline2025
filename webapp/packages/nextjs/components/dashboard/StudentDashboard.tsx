@@ -3,7 +3,7 @@
 import { useActiveAccount, useReadContract } from "thirdweb/react";
 import { getContract } from "thirdweb";
 import { formatUnits } from "viem";
-import { CONTRACTS } from "../../lib/constants/contracts";
+import { CONTRACTS, PYUSD_DECIMALS } from "../../lib/constants/contracts";
 import { client } from "../../client";
 import { activeChain } from "../../lib/chains";
 // import { QuickActions } from "../socket/QuickActions";
@@ -44,7 +44,7 @@ export const StudentDashboard = ({ onStartLearning, onAddFunds }: StudentDashboa
     ],
   });
 
-  const balanceFormatted = balance ? parseFloat(formatUnits(balance, 18)) : 0;
+  const balanceFormatted = balance ? parseFloat(formatUnits(balance, PYUSD_DECIMALS)) : 0;
   const targetLanguage = studentInfo ? Number(studentInfo[0]) : 0;
   const budgetPerSec = studentInfo ? Number(studentInfo[1]) : 0;
   const budgetPerHour = budgetPerSec * 3600;
@@ -109,7 +109,7 @@ export const StudentDashboard = ({ onStartLearning, onAddFunds }: StudentDashboa
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">Budget per Hour:</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {(budgetPerHour / 1e18).toFixed(4)} PYUSD
+                    {(budgetPerHour / Math.pow(10, PYUSD_DECIMALS)).toFixed(4)} PYUSD
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -156,7 +156,7 @@ export const StudentDashboard = ({ onStartLearning, onAddFunds }: StudentDashboa
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 text-center">
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {Math.floor(balanceFormatted * 3600 / (budgetPerHour / 1e18))}
+              {Math.floor(balanceFormatted * 3600 / (budgetPerHour / Math.pow(10, PYUSD_DECIMALS)))}
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Hours Available

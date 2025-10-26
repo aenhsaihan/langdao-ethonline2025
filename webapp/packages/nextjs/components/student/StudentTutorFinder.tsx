@@ -5,7 +5,7 @@ import { useSocket } from "../../lib/socket/socketContext";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useActiveAccount } from "thirdweb/react";
-import { CONTRACTS, LANGUAGES } from "../../lib/constants/contracts";
+import { CONTRACTS, LANGUAGES, PYUSD_DECIMALS } from "../../lib/constants/contracts";
 import { useScaffoldWriteContract, useScaffoldReadContract, useUsdConversion } from "~~/hooks/scaffold-eth";
 
 interface StudentTutorFinderProps {
@@ -67,7 +67,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
   const { data: hasSufficientBalance } = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "hasSufficientBalance",
-    args: [account?.address, currentTutor?.tutorAddress as `0x${string}`, CONTRACTS.PYUSD],
+    args: [account?.address, currentTutor?.tutorAddress as `0x${string}`],
   });
 
   // State to store tutor's actual on-chain languages
@@ -77,27 +77,27 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
   const tutorLang1 = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "getTutorLanguage",
-    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(1)],
+    args: [currentTutor?.tutorAddress as `0x${string}`, 1],
   });
   const tutorLang2 = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "getTutorLanguage",
-    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(2)],
+    args: [currentTutor?.tutorAddress as `0x${string}`, 2],
   });
   const tutorLang3 = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "getTutorLanguage",
-    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(3)],
+    args: [currentTutor?.tutorAddress as `0x${string}`, 3],
   });
   const tutorLang4 = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "getTutorLanguage",
-    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(4)],
+    args: [currentTutor?.tutorAddress as `0x${string}`, 4],
   });
   const tutorLang5 = useScaffoldReadContract({
     contractName: "LangDAO",
     functionName: "getTutorLanguage",
-    args: [currentTutor?.tutorAddress as `0x${string}`, BigInt(5)],
+    args: [currentTutor?.tutorAddress as `0x${string}`, 5],
   });
 
   // Debug: Check all languages when currentTutor changes
@@ -272,8 +272,8 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       return;
     }
 
-    // Convert hourly rate to per-second wei (same as registration)
-    const budgetPerSecond = Math.floor((parseFloat(budgetPerHour) / 3600) * 1e18);
+    // Convert hourly rate to per-second PYUSD units (same as registration)
+    const budgetPerSecond = Math.floor((parseFloat(budgetPerHour) / 3600) * Math.pow(10, PYUSD_DECIMALS));
 
     const requestId = `req_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -354,7 +354,7 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
       // Call startSession on the smart contract
       const tx = await startSessionWrite({
         functionName: "startSession",
-        args: [currentTutor.tutorAddress as `0x${string}`, languageId, CONTRACTS.PYUSD as `0x${string}`],
+        args: [currentTutor.tutorAddress as `0x${string}`, languageId],
       });
 
       console.log("Transaction sent successfully:", tx);
@@ -761,6 +761,52 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
               This tutor is ready to start your {selectedLanguageData?.label} lesson right now!
             </p>
 
+            {/* Balance Warning */}
+            {hasSufficientBalance === false && (
+              <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-bold text-red-700 dark:text-red-300 mb-2">
+                      Insufficient Balance
+                    </h3>
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+                      You need to deposit at least <strong>10 minutes worth of PYUSD</strong> to start a session.
+                    </p>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      Required: ~{((currentTutor.ratePerSecond * 600) / Math.pow(10, PYUSD_DECIMALS)).toFixed(2)} PYUSD
+                      <br />
+                      <span className="text-xs">(10 minutes at {weiPerSecondToHourlyUsd(currentTutor.ratePerSecond)}/hour)</span>
+                    </p>
+                    <a
+                      href="/onboarding?step=deposit"
+                      className="inline-block mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                    >
+                      Deposit PYUSD Now →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {canAfford === false && hasSufficientBalance !== false && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 rounded-xl p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <span className="text-2xl">💰</span>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-bold text-yellow-700 dark:text-yellow-300 mb-2">
+                      Budget Too Low
+                    </h3>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      Your budget ({pyusdToUsdFormatted(budgetPerHour)}/hr) is lower than this tutor's rate ({weiPerSecondToHourlyUsd(currentTutor.ratePerSecond)}/hr).
+                      <br />
+                      Please increase your budget or find another tutor.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex space-x-4">
               <button
@@ -772,10 +818,11 @@ export const StudentTutorFinder: React.FC<StudentTutorFinderProps> = ({ onBack, 
               </button>
               <button
                 onClick={acceptTutor}
-                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200"
+                disabled={hasSufficientBalance === false || canAfford === false}
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="mr-2">🚀</span>
-                Start Session Now
+                {hasSufficientBalance === false ? "Insufficient Balance" : canAfford === false ? "Budget Too Low" : "Start Session Now"}
               </button>
             </div>
 

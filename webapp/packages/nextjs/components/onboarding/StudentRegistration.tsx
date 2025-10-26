@@ -3,7 +3,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 
-import { LANGUAGES } from "../../lib/constants/contracts";
+import { LANGUAGES, PYUSD_DECIMALS } from "../../lib/constants/contracts";
 import { useScaffoldWriteContract, useUsdConversion } from "~~/hooks/scaffold-eth";
 
 interface StudentRegistrationProps {
@@ -30,7 +30,7 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
       return;
     }
 
-    const budgetPerSecond = Math.floor((parseFloat(budgetPerHour) / 3600) * 1e18); // Convert to wei per second
+    const budgetPerSecond = Math.floor((parseFloat(budgetPerHour) / 3600) * Math.pow(10, PYUSD_DECIMALS)); // Convert to PYUSD units per second
 
     setIsSubmitting(true);
 
@@ -38,7 +38,7 @@ export const StudentRegistration = ({ onComplete, onBack }: StudentRegistrationP
       // Call the registerStudent function from LangDAO contract
       await writeContractAsync({
         functionName: "registerStudent",
-        args: [BigInt(targetLanguage), BigInt(budgetPerSecond)],
+        args: [targetLanguage, BigInt(budgetPerSecond)],
       });
 
       toast.success("Registration successful!");

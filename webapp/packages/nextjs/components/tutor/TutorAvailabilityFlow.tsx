@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { useActiveAccount } from "thirdweb/react";
 import { useSocket } from "../../lib/socket/socketContext";
 import { useScaffoldReadContract, useUsdConversion } from "~~/hooks/scaffold-eth";
-import { LANGUAGES } from "../../lib/constants/contracts";
+import { LANGUAGES, PYUSD_DECIMALS } from "../../lib/constants/contracts";
 
 interface TutorAvailabilityFlowProps {
   onBack?: () => void;
@@ -18,12 +18,41 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
   const account = useActiveAccount();
   const { socket, isConnected, on, off, emit } = useSocket();
   const [availabilityState, setAvailabilityState] = useState<AvailabilityState>("setup");
-  const [language, setLanguage] = useState("en"); // Use language code instead of name
-  const [ratePerHour, setRatePerHour] = useState("10"); // Store as hourly rate string like registration
+  const [selectedLanguageId, setSelectedLanguageId] = useState<number | null>(null); // Language ID from contract
   const { pyusdToUsdFormatted } = useUsdConversion();
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<any>(null);
   const unavailableTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Read tutor info from contract
+  const { data: tutorInfo, isLoading: isTutorInfoLoading } = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorInfo",
+    args: [account?.address],
+  });
+
+  // Read which languages the tutor offers (check all 38 languages)
+  const tutorLanguageChecks = LANGUAGES.map(lang => 
+    useScaffoldReadContract({
+      contractName: "LangDAO",
+      functionName: "getTutorLanguage",
+      args: [account?.address, lang.id],
+    })
+  );
+
+  // Get tutor's registered languages
+  const tutorLanguages = LANGUAGES.filter((lang, index) => 
+    tutorLanguageChecks[index].data === true
+  );
+
+  // Get rate for selected language
+  const { data: tutorRate } = useScaffoldReadContract({
+    contractName: "LangDAO",
+    functionName: "getTutorRate",
+    args: [account?.address, selectedLanguageId ?? 0],
+  });
+
+  const isTutorRegistered = tutorInfo ? tutorInfo[2] : false;
 
   // Monitor active session on blockchain for this tutor
   const { data: activeSessionData, refetch: refetchActiveSession } = useScaffoldReadContract({
@@ -252,19 +281,36 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
       return;
     }
 
-    // Convert hourly rate to per-second wei (same as registration)
-    const ratePerSecond = Math.floor((parseFloat(ratePerHour) / 3600) * 1e18);
+    if (!isTutorRegistered) {
+      toast.error("Please register as a tutor first");
+      return;
+    }
 
-    console.log("Emitting tutor:set-available:", {
+    if (selectedLanguageId === null) {
+      toast.error("Please select a language");
+      return;
+    }
+
+    if (!tutorRate) {
+      toast.error("No rate found for selected language");
+      return;
+    }
+
+    // Use rate from contract (already in per-second PYUSD units)
+    const ratePerSecond = Number(tutorRate);
+    const selectedLang = LANGUAGES.find(l => l.id === selectedLanguageId);
+
+    console.log("Emitting tutor:set-available with contract data:", {
       address: account?.address,
-      language,
+      language: selectedLang?.code,
+      languageId: selectedLanguageId,
       ratePerSecond,
-      ratePerHour, // for debugging
+      rateFromContract: tutorRate?.toString(),
     });
 
     emit("tutor:set-available", {
       address: account?.address,
-      language,
+      language: selectedLang?.code, // Send language code for backend matching
       ratePerSecond,
     });
 
@@ -347,9 +393,13 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
     toast.success("Session ended. You're available for new students!");
   };
 
-  const selectedLanguageData = languages.find(lang => lang.value === language);
+  // Get selected language data for display
+  const selectedLanguageData = selectedLanguageId !== null ? LANGUAGES.find(l => l.id === selectedLanguageId) : null;
+  const displayRatePerHour = tutorRate ? (Number(tutorRate) * 3600 / Math.pow(10, PYUSD_DECIMALS)).toFixed(2) : "0";
 
   if (availabilityState === "setup") {
+    const selectedLang = selectedLanguageData;
+
     return (
       <div className="min-h-[calc(100vh-8rem)] bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl w-full">
@@ -361,61 +411,73 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               </div>
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to Start Tutoring?</h2>
               <p className="text-gray-600 dark:text-gray-300">
-                Set your language and rate, then go live to start earning!
+                Select a language from your registered languages to go live
               </p>
             </div>
 
-            {/* Language Selection */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Language to Teach
-              </label>
-              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                {languages.map(lang => (
-                  <button
-                    key={lang.value}
-                    onClick={() => setLanguage(lang.value)}
-                    className={`p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center ${language === lang.value
-                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-                        : "border-gray-200 dark:border-gray-600 hover:border-purple-300"
-                      }`}
-                    title={lang.label}
-                  >
-                    <div className="text-xl">{lang.flag}</div>
-                    <div className="text-xs font-medium text-gray-900 dark:text-white mt-1 truncate w-full text-center">{lang.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Rate Setting */}
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your Rate (PYUSD per hour)
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={ratePerHour}
-                  onChange={e => setRatePerHour(e.target.value)}
-                  className="w-full p-4 pr-28 border-2 border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-lg"
-                  placeholder="10.00"
-                />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">PYUSD</div>
-              </div>
-              {ratePerHour && parseFloat(ratePerHour) > 0 && (
-                <div className="mt-2 flex items-center justify-between text-sm">
-                  <span className="text-purple-600 dark:text-purple-400 font-medium">
-                    ≈ {pyusdToUsdFormatted(ratePerHour)}/hr
-                  </span>
-                  <span className="text-gray-500">
-                    {pyusdToUsdFormatted(parseFloat(ratePerHour) / 3600, 6)}/sec
-                  </span>
+            {/* Registration Check */}
+            {!isTutorRegistered && !isTutorInfoLoading && (
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <h3 className="font-bold text-red-700 dark:text-red-300">Not Registered as Tutor</h3>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      Please register as a tutor first before going live.
+                    </p>
+                    <a
+                      href="/onboarding?role=tutor"
+                      className="inline-block mt-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
+                    >
+                      Register Now →
+                    </a>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Language Selection - Only show registered languages */}
+            {isTutorRegistered && tutorLanguages.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Your Registered Languages
+                </label>
+                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                  {tutorLanguages.map(lang => (
+                    <button
+                      key={lang.id}
+                      onClick={() => setSelectedLanguageId(lang.id)}
+                      className={`p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center ${selectedLanguageId === lang.id
+                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                          : "border-gray-200 dark:border-gray-600 hover:border-purple-300"
+                        }`}
+                      title={lang.name}
+                    >
+                      <div className="text-xl">{lang.flag}</div>
+                      <div className="text-xs font-medium text-gray-900 dark:text-white mt-1 truncate w-full text-center">{lang.name}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rate Display - Read from contract */}
+            {selectedLang && tutorRate && (
+              <div className="mb-8 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                <div className="text-center">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Your Rate for {selectedLang.name}</div>
+                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    {pyusdToUsdFormatted(displayRatePerHour)}/hr
+                  </div>
+                  <div className="text-sm text-gray-500 mt-2">
+                    {pyusdToUsdFormatted(parseFloat(displayRatePerHour) / 3600, 6)}/sec
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    (Rate from blockchain contract)
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Connection Status */}
             <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
@@ -442,11 +504,11 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
               )}
               <button
                 onClick={becomeAvailable}
-                disabled={!isConnected}
+                disabled={!isConnected || !isTutorRegistered || selectedLanguageId === null || !tutorRate}
                 className="flex-1 px-6 py-4 bg-gradient-to-r from-purple-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="mr-2">🚀</span>
-                Go Live & Start Earning
+                {!isTutorRegistered ? "Register First" : selectedLanguageId === null ? "Select Language" : "Go Live & Start Earning"}
               </button>
             </div>
           </div>
@@ -540,27 +602,27 @@ export const TutorAvailabilityFlow: React.FC<TutorAvailabilityFlowProps> = ({ on
             </div>
             <div className="mb-6">
               <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">
-                Teaching <span className="font-semibold text-green-600">{selectedLanguageData?.label}</span> at{" "}
-                <span className="font-semibold">{pyusdToUsdFormatted(ratePerHour)}/hr</span>
+                Teaching <span className="font-semibold text-green-600">{selectedLanguageData?.name}</span> at{" "}
+                <span className="font-semibold">{pyusdToUsdFormatted(displayRatePerHour)}/hr</span>
               </p>
 
               {/* Earnings Preview */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {pyusdToUsdFormatted(parseFloat(ratePerHour) / 60)}
+                    {pyusdToUsdFormatted(parseFloat(displayRatePerHour) / 60)}
                   </div>
                   <div className="text-xs text-gray-500">/min</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {pyusdToUsdFormatted(ratePerHour)}
+                    {pyusdToUsdFormatted(displayRatePerHour)}
                   </div>
                   <div className="text-xs text-gray-500">/hour</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                   <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {pyusdToUsdFormatted(parseFloat(ratePerHour) * 24)}
+                    {pyusdToUsdFormatted(parseFloat(displayRatePerHour) * 24)}
                   </div>
                   <div className="text-xs text-gray-500">/day</div>
                 </div>

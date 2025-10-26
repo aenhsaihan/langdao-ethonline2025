@@ -59,7 +59,7 @@ This directory contains the frontend components for the LangDAO language learnin
 - **daisyui**: UI components
 
 ### Contract Integration
-- **PYUSD Token**: `0x6c3ea9036406852006290770BEdFcAbA0e23A0e8`
+- **PYUSD Token**: `0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9`
 - **LangDAO Contract**: Configurable in `lib/constants/contracts.ts`
 
 ### Key Features
@@ -93,8 +93,8 @@ Update `lib/constants/contracts.ts` with your deployed contract addresses:
 
 ```typescript
 export const CONTRACTS = {
-  PYUSD: "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8",
-  LANGDAO: "YOUR_DEPLOYED_CONTRACT_ADDRESS", // Update this!
+  PYUSD: "0xCaC524BcA292aaade2DF8A05cC58F0a65B1B3bB9",
+  LANGDAO: "0x4Fb5675e6baE48C95c1D4f1b154E3d5e8E36112C",
 } as const;
 ```
 
