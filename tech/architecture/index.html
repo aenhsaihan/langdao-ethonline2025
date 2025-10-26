@@ -1,0 +1,1945 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Helping people use their language skills to learn, teach, and earn in Web3.">
+      
+      
+      
+      
+        <link rel="prev" href="../../product/testbed-latam/">
+      
+      
+        <link rel="next" href="../integrations/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>Architecture - LangDAO</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architecture-mvp" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="LangDAO" class="md-header__button md-logo" aria-label="LangDAO" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LangDAO
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aenhsaihan/langdao-ethonline2025" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="LangDAO" class="md-nav__button md-logo" aria-label="LangDAO" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LangDAO
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aenhsaihan/langdao-ethonline2025" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Product
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Product
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product/scope-mvp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MVP Scope
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Roadmap
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product/testbed-latam/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Testbed (LatAm)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tech
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Tech
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      High-level Components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High-level Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-1-session-escrow-time-billed-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 1: Session Escrow (time-billed calls)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 1: Session Escrow (time-billed calls)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-this-component-does-and-only-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      What this component does (and only this)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What this component does (and only this)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      Caveats
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-2-heartbeat-auto-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 2: Heartbeat &amp; Auto-Stop
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 2: Heartbeat &amp; Auto-Stop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concept
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key changes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior Summary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-3a-matchmaker-roulette-find-tutor-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 3A — Matchmaker (Roulette “find tutor now”)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 3A — Matchmaker (Roulette “find tutor now”)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Assumptions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edge-cases-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Edge cases &amp; timeouts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-3b-matchmaker-booking-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 3B — Matchmaker (Booking Flow)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 3B — Matchmaker (Booking Flow)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#behavior-summary_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior Summary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Properties
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-4-credentials-ratings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 4 — Credentials &amp; Ratings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 4 — Credentials &amp; Ratings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credential-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Credential Types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logic-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logic Highlights
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-5-dao-vetting-flow-tutor-credential-sbt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 5 — DAO Vetting Flow (Tutor Credential SBT)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-6-streaming-payments-with-dynamic-top-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 6 — Streaming Payments with Dynamic Top-Up
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 6 — Streaming Payments with Dynamic Top-Up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      Goals
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-pieces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Pieces
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior-summary_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior Summary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-meets-your-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why this meets your constraints
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimal-contract-surface-pseudocode-not-solidity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Minimal Contract Surface (pseudocode, not Solidity)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#top-up-ux-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Top-Up UX Notes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Failure / Edge Cases
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Integrations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dao-vetting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DAO Vetting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Research
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Research
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/assumptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Assumptions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Decisions (ADRs)
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Decisions (ADRs)
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0001-huddle01/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0001 - Huddle01 Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      High-level Components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High-level Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-1-session-escrow-time-billed-calls" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 1: Session Escrow (time-billed calls)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 1: Session Escrow (time-billed calls)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-this-component-does-and-only-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      What this component does (and only this)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What this component does (and only this)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#caveats" class="md-nav__link">
+    <span class="md-ellipsis">
+      Caveats
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-2-heartbeat-auto-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 2: Heartbeat &amp; Auto-Stop
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 2: Heartbeat &amp; Auto-Stop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concept
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key changes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior Summary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-3a-matchmaker-roulette-find-tutor-now" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 3A — Matchmaker (Roulette “find tutor now”)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 3A — Matchmaker (Roulette “find tutor now”)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Assumptions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edge-cases-timeouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Edge cases &amp; timeouts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-3b-matchmaker-booking-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 3B — Matchmaker (Booking Flow)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 3B — Matchmaker (Booking Flow)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#behavior-summary_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior Summary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Properties
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-4-credentials-ratings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 4 — Credentials &amp; Ratings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 4 — Credentials &amp; Ratings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credential-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Credential Types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logic-highlights" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logic Highlights
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-5-dao-vetting-flow-tutor-credential-sbt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 5 — DAO Vetting Flow (Tutor Credential SBT)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-6-streaming-payments-with-dynamic-top-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Component 6 — Streaming Payments with Dynamic Top-Up
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component 6 — Streaming Payments with Dynamic Top-Up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      Goals
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-pieces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Pieces
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior-summary_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behavior Summary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-meets-your-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why this meets your constraints
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimal-contract-surface-pseudocode-not-solidity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Minimal Contract Surface (pseudocode, not Solidity)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#top-up-ux-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Top-Up UX Notes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failure-edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Failure / Edge Cases
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="architecture-mvp">Architecture (MVP)</h1>
+<p>This MVP lets a <strong>Tutor</strong> go online with a per-minute/per-second rate, and a <strong>Student</strong>:</p>
+<ul>
+<li>match via <strong>roulette</strong> or booking</li>
+<li>pay <strong>only for time in call</strong></li>
+<li>get auto <strong>call cutoff</strong> when balance ends or either side disconnects</li>
+<li>receive <strong>POAP/credential</strong> (optional)</li>
+<li>rate the tutor and track progress</li>
+</ul>
+<p>We minimize contracts to what’s essential for <strong>time-billed calls</strong> and <strong>auto-stop</strong>.</p>
+<hr />
+<h2 id="high-level-components">High-level Components</h2>
+<pre class="mermaid"><code>graph TD
+  subgraph "Client"
+    S["Student dApp - NextJS"]:::box
+    T["Tutor dApp - NextJS"]:::box
+    W["WalletConnect"]:::box
+  end
+
+  subgraph "Realtime"
+    H["Huddle01 WebRTC Rooms"]:::svc
+  end
+
+  subgraph "Off-chain Services"
+    MM["Matchmaker API - Roulette &amp; Booking"]:::svc
+    HB["Heartbeat Service - 5s signed pings"]:::svc
+    RL["Relayer Bot - authorized"]:::svc
+    NF["Notifications &amp; Calendar"]:::svc
+  end
+
+  subgraph "On-chain / Protocol"
+    CTRL["Payment Controller - Flow Operator"]:::chain
+    STR["Streaming Protocol - Superfluid or Sablier"]:::chain
+    CRED["Credentials - POAP or SBT"]:::chain
+    RAT["Ratings (IPFS + on-chain hash)"]:::chain
+    DAO["DAO Multisig + Snapshot"]:::chain
+  end
+
+  S --&gt;|auth| W
+  T --&gt;|auth| W
+  S --&gt; MM
+  T --&gt; MM
+  MM --&gt; H
+  S --&gt;|join| H
+  T --&gt;|join| H
+
+  S --&gt; HB
+  T --&gt; HB
+  H --&gt; HB
+  HB --&gt; RL
+  RL --&gt; CTRL
+  CTRL --&gt;|create/update/delete flow| STR
+
+  S --&gt;|grant operator + top-ups| CTRL
+  STR --&gt;|real-time stream| T
+
+  S --&gt; CRED
+  T --&gt; CRED
+  S --&gt; RAT
+  T --&gt; RAT
+  DAO --&gt; CRED
+
+  classDef box fill:#0b5fff0d,stroke:#0b5fff,stroke-width:1px,color:#0b2540;
+  classDef svc fill:#ffd50014,stroke:#d4a000,stroke-width:1px,color:#5a4500;
+  classDef chain fill:#00a36b14,stroke:#008a59,stroke-width:1px,color:#0b3b2c;</code></pre>
+<h3 id="reading-notes">Reading notes</h3>
+<ul>
+<li><strong>Matchmaker</strong> handles roulette/booking, then hands off to <strong>Huddle01</strong> for the live session.</li>
+<li><strong>Heartbeat</strong> watches WebRTC + pings; <strong>Relayer → Controller</strong> deletes the stream on drop.</li>
+<li><strong>Controller</strong> is pre-authorized by the student (flow operator) to manage their stream non-interactively.</li>
+<li><strong>Top-ups</strong> go from Student → Controller/Protocol; funds stream to Tutor in real time.</li>
+<li><strong>Credentials (POAP/SBT)</strong> and <strong>Ratings</strong> form the reputation layer; <strong>DAO</strong> issues SBTs via Snapshot + Multisig.</li>
+</ul>
+<h2 id="component-1-session-escrow-time-billed-calls">Component 1: Session Escrow (time-billed calls)</h2>
+<p><strong>Goal</strong>: pay the tutor only for time in call; auto-stop on cap/disconnect.</p>
+<pre class="mermaid"><code>stateDiagram-v2
+  [*] --&gt; Idle
+
+  Idle --&gt; Funded: deposit(cap, rate)&lt;br&gt;(by Student)
+  Funded --&gt; Active: startSession()&lt;br&gt;(both joined)
+
+  Active --&gt; Stopping: cap reached&lt;br&gt;(or Student ends)
+  Active --&gt; Stopping: disconnect detected&lt;br&gt;(heartbeat/webRTC)
+  Active --&gt; Stopping: tutor ends
+
+  Stopping --&gt; Settled: settle owed = min(elapsed, cap) * rate
+  Settled --&gt; Refunded: refund remainder (cap - elapsed)*rate
+  Refunded --&gt; Closed</code></pre>
+<h3 id="what-this-component-does-and-only-this">What this component does (and only this)</h3>
+<ul>
+<li><strong>deposit(cap, rate)</strong>: Student pre-funds max spend → moves to <strong>Funded</strong>.</li>
+<li><strong>startSession()</strong>: Called once both are in the room → moves to <strong>Active</strong>.</li>
+<li><strong>elapsed accounting</strong>: measured inside contract (block timestamps) or a “meter” submodule.</li>
+<li><strong>stop triggers:</strong></li>
+<li><strong>cap reached,</strong></li>
+<li><strong>disconnect</strong> (from heartbeat/webRTC signal relayed on-chain),</li>
+<li><strong>either party ends.</strong></li>
+<li><strong>settle()</strong>: pay tutor <strong>min(elapsed, cap) × rate</strong>, refund remainder to student.</li>
+<li><strong>no overpaying, no post-drop leakage</strong> by construction.</li>
+</ul>
+<h4 id="caveats">Caveats</h4>
+<p>What if the user wishes to keep the current session running longer than his deposit allows? Could be a UX bug.</p>
+<h2 id="component-2-heartbeat-auto-stop">Component 2: Heartbeat &amp; Auto-Stop</h2>
+<p><strong>Purpose</strong>: guarantee that if either peer drops from a Huddle01 call, billing halts instantly.</p>
+<h3 id="concept">Concept</h3>
+<p>Each participant’s client emits a signed “I’m still here” ping every N seconds to a lightweight service.
+If either side fails to send two consecutive heartbeats (≈ 10 s of silence), the service calls the on-chain <code>stopSession()</code> via a relayer.</p>
+<pre class="mermaid"><code>sequenceDiagram
+  autonumber
+  participant Student as Student Client
+  participant Tutor as Tutor Client
+  participant Huddle as Huddle01 (WebRTC)
+  participant Heartbeat as Heartbeat Service
+  participant Relayer as Relayer Bot
+  participant Controller as Payment Controller
+  participant Stream as Streaming Protocol
+
+  %% Start of call (elsewhere: Matchmaker + Controller.startSession)
+  Student-&gt;&gt;Huddle: join()
+  Tutor-&gt;&gt;Huddle: join()
+
+  %% Periodic liveness pings
+  loop every 5s
+    Student-&gt;&gt;Heartbeat: POST /ping {sessionId, sig}
+    Tutor-&gt;&gt;Heartbeat: POST /ping {sessionId, sig}
+  end
+
+  Note over Heartbeat: tracks lastPing for both peers
+
+  %% Disconnect from Huddle or missing pings
+  Huddle--&gt;&gt;Heartbeat: peer-left / connectionState=failed
+  Heartbeat-&gt;&gt;Heartbeat: OR detect missing ping &gt; 10s
+
+  alt disconnect or missing ping
+    Heartbeat--&gt;&gt;Relayer: emit "disconnect(sessionId)"
+    Relayer-&gt;&gt;Controller: stopSession(sessionId)
+    Controller-&gt;&gt;Stream: deleteFlow(student -&gt; tutor)
+    Note over Controller,Stream: Stream deleted → payment stops instantly
+  end</code></pre>
+<h3 id="key-changes">Key changes</h3>
+<ul>
+<li>Heartbeat no longer calls escrow; it instructs the <strong>Controller</strong> to <strong>delete the live stream</strong> (Superfluid/Sablier) so <strong>billing halts immediately</strong>.</li>
+<li>The note is placed <em>inside</em> a valid branch to avoid Mermaid parse errors.</li>
+</ul>
+<h3 id="behavior-summary">Behavior Summary</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Event</th>
+<th style="text-align: left;">Trigger</th>
+<th style="text-align: left;">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">✅ Normal pings</td>
+<td style="text-align: left;">both clients responding</td>
+<td style="text-align: left;">nothing changes</td>
+</tr>
+<tr>
+<td style="text-align: left;">⚠️ One peer silent &gt; 10 s</td>
+<td style="text-align: left;">network loss/closed tab</td>
+<td style="text-align: left;">Heartbeat → Relayer → stopSession()</td>
+</tr>
+<tr>
+<td style="text-align: left;">Stop Acknowledgement</td>
+<td style="text-align: left;">Escrow settles</td>
+<td style="text-align: left;">tutor payout + student refund issued</td>
+</tr>
+</tbody>
+</table>
+<h3 id="implementation-notes">Implementation notes</h3>
+<ul>
+<li>Ping = small JSON {sessionId, walletAddr, signature}.</li>
+<li>Verification = HMAC / signature ensures no spoofing.</li>
+<li>Relayer = can be Biconomy, Gelato, OZ Defender or simple script with funded key.</li>
+<li>Timeout tunable (5 s, 10 s, 15 s).</li>
+<li>Logs feed optional analytics (“average disconnect time”).</li>
+</ul>
+<h2 id="component-3a-matchmaker-roulette-find-tutor-now">Component 3A — Matchmaker (Roulette “find tutor now”)</h2>
+<p><strong>Purpose</strong>: pair a student with an available, matching tutor quickly, confirm the rate/cap, and hand off to escrow → call.</p>
+<h3 id="assumptions">Assumptions</h3>
+<ul>
+<li>Student specifies <strong>filters</strong>: language, level, <strong>max rate</strong>, credential (optional SBT).</li>
+<li>Tutor sets <strong>availability</strong> + <strong>per-second/minute rate</strong> and optional credentials.</li>
+<li>We pre-check <strong>student balance/cap</strong> before proposing.</li>
+</ul>
+<pre class="mermaid"><code>sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant MM as Matchmaker API
+  participant Tutor as Tutor dApp
+  participant Wallet as Wallet/Balance
+  participant Escrow as Escrow Contract
+  participant Huddle as Huddle01
+
+  Student-&gt;&gt;Wallet: read balance / max spend cap
+  Student-&gt;&gt;MM: findNow({lang, level, maxRate, credReq, cap})
+  MM-&gt;&gt;MM: filter tutors: online ∧ rate&lt;=maxRate ∧ cred ok
+  alt no tutors
+    MM--&gt;&gt;Student: none available → suggest booking/waitlist
+    Note over Student,MM: END (no match)
+  else candidates exist
+    MM-&gt;&gt;Tutor: proposal({rate, estCap, filters}) (30s ttl)
+    alt tutor accepts
+      Tutor--&gt;&gt;MM: accept
+      MM-&gt;&gt;Huddle: create room token (ephemeral)
+      MM--&gt;&gt;Student: matchFound({tutor, rate, roomToken, cap})
+      Student-&gt;&gt;Escrow: deposit(cap), startSessionIntent(rate,tutor)
+      alt deposit OK
+        Escrow--&gt;&gt;Student: sessionId
+        Student-&gt;&gt;Huddle: join(roomToken)
+        Tutor-&gt;&gt;Huddle: join(roomToken)
+        Note over Student,Tutor: handoff to Heartbeat + Escrow component
+      else deposit fails / too low
+        Escrow--&gt;&gt;Student: insufficient funds
+        MM--&gt;&gt;Student: retry / reduce cap
+      end
+    else tutor times out / declines
+      Tutor--&gt;&gt;MM: decline/timeout
+      MM-&gt;&gt;MM: try next candidate (max N attempts)
+      MM--&gt;&gt;Student: (optional) still matching… spinner
+    end
+  end</code></pre>
+<h3 id="behavior">Behavior</h3>
+<ul>
+<li><strong>Filter</strong> → <strong>Propose</strong> → <strong>Accept</strong> loop with <strong>short TTL</strong> to keep UX snappy.</li>
+<li><strong>Balance &amp; cap pre-check</strong> avoids proposing rates the student can’t afford.</li>
+<li><strong>Rate lock</strong> at acceptance (for the session intent), so no last-second changes.</li>
+<li>On <strong>accept</strong>, we <strong>create room</strong>, then require <strong>escrow deposit</strong> before join.</li>
+<li>If <strong>escrow fails</strong>, offer <strong>retry</strong> or <strong>reduce cap</strong>; the tutor can be auto-released.</li>
+</ul>
+<h3 id="edge-cases-timeouts">Edge cases &amp; timeouts</h3>
+<ul>
+<li>No tutors → offer <strong>booking</strong> or <strong>waitlist ping</strong>.</li>
+<li>Tutor non-response → <strong>retry next</strong> (max N attempts, e.g., 3).</li>
+<li>Race conditions (two students propose same tutor): first <strong>valid accept</strong> wins; others get retry.</li>
+</ul>
+<h2 id="component-3b-matchmaker-booking-flow">Component 3B — Matchmaker (Booking Flow)</h2>
+<p><strong>Purpose</strong>: let students <strong>book tutors in advance</strong>, ensure <strong>both confirm</strong>, and automatically trigger the <strong>escrow + call</strong> flow at the appointment time.</p>
+<pre class="mermaid"><code>sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant MM as Matchmaker API
+  participant Tutor as Tutor dApp
+  participant Cal as Calendar / Scheduler
+  participant Escrow as Escrow Contract
+  participant Huddle as Huddle01
+  participant Notif as Notification Service
+
+  Student-&gt;&gt;MM: requestBooking({tutorId, dateTime, duration, rateCap})
+  MM-&gt;&gt;Tutor: proposeSlot({dateTime, duration, rateCap})
+  alt tutor accepts
+    Tutor--&gt;&gt;MM: accept
+    MM-&gt;&gt;Cal: createEvent({student, tutor, time, duration})
+    Cal--&gt;&gt;MM: eventId
+    MM-&gt;&gt;Notif: sendConfirmation(emails/push to both)
+    Notif--&gt;&gt;Student: booking confirmed
+    Notif--&gt;&gt;Tutor: booking confirmed
+  else tutor declines
+    Tutor--&gt;&gt;MM: decline
+    MM--&gt;&gt;Student: suggest new slot / other tutors
+    Note over MM: END (no booking)
+  end
+
+  %% Day-of-Session automation
+  Notif-&gt;&gt;Student: reminder T-30 min
+  Notif-&gt;&gt;Tutor: reminder T-30 min
+  Cal-&gt;&gt;MM: trigger start window (T-5 min)
+
+  MM-&gt;&gt;Huddle: createRoomToken(eventId)
+  MM-&gt;&gt;Escrow: preAuthSession({student,tutor,rate,durationCap})
+  Escrow--&gt;&gt;MM: sessionIntent ok
+  MM--&gt;&gt;Student: joinLink + depositPrompt
+  Student-&gt;&gt;Escrow: deposit(cap)
+  Student-&gt;&gt;Huddle: join(roomToken)
+  Tutor-&gt;&gt;Huddle: join(roomToken)
+
+  Note over Huddle: handoff → Heartbeat &amp; Escrow components</code></pre>
+<h3 id="behavior-summary_1">Behavior Summary</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Phase</th>
+<th style="text-align: left;">Who</th>
+<th style="text-align: left;">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Proposal</td>
+<td style="text-align: left;">Student -&gt; Tutor</td>
+<td style="text-align: left;">request slot (date, duration, rateCap)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Confirmation</td>
+<td style="text-align: left;">Tutor</td>
+<td style="text-align: left;">accept/decline → calendar entry</td>
+</tr>
+<tr>
+<td style="text-align: left;">Reminders</td>
+<td style="text-align: left;">Notification service</td>
+<td style="text-align: left;">30 min &amp; 5 min pre-session</td>
+</tr>
+<tr>
+<td style="text-align: left;">Pre-fund</td>
+<td style="text-align: left;">Student</td>
+<td style="text-align: left;">deposits cap before start</td>
+</tr>
+<tr>
+<td style="text-align: left;">Session Start</td>
+<td style="text-align: left;">System</td>
+<td style="text-align: left;">opens Huddle room + Escrow intent</td>
+</tr>
+<tr>
+<td style="text-align: left;">Live Call</td>
+<td style="text-align: left;">Both</td>
+<td style="text-align: left;">proceeds under Heartbeat + Auto-Stop rules</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-properties">Key Properties</h3>
+<ul>
+<li><strong>Double opt-in</strong>: prevents ghost bookings.</li>
+<li><strong>Pre-authorization</strong>: ensures funds exist before the room opens.</li>
+<li><strong>Automation</strong>: Cal/Notif triggers prevent manual coordination.</li>
+<li><strong>Handoff</strong>: identical to roulette after join → no duplicate logic.</li>
+</ul>
+<h2 id="component-4-credentials-ratings">Component 4 — Credentials &amp; Ratings</h2>
+<p><strong>Purpose</strong>: after every session, issue a verifiable proof of participation and update both participants’ reputations.
+for vetted tutors, issue a <strong>Soul-Bound Token (SBT)</strong> to unlock credential-gated rooms.</p>
+<pre class="mermaid"><code>sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant Tutor as Tutor dApp
+  participant ESC as Escrow Contract
+  participant POAP as POAP API / Mint Contract
+  participant DAO as Vetting DAO / SBT Issuer
+  participant IPFS as Ratings Storage
+
+  ESC--&gt;&gt;Student: sessionSettled(eventId)
+  Student-&gt;&gt;POAP: mintPOAP(eventId, sig)
+  POAP--&gt;&gt;Student: tokenId (POAP NFT)
+  Note over Student,POAP: proof of session = credential #1
+
+  Student-&gt;&gt;IPFS: uploadRating({tutorId, score, text})
+  IPFS--&gt;&gt;Student: cid
+  Student-&gt;&gt;ESC: recordRatingHash(cid)
+  ESC--&gt;&gt;Tutor: reputationUpdate(cid)
+
+  alt DAO vetting process
+    Tutor-&gt;&gt;DAO: applyForCredential({proofs, ratings})
+    DAO--&gt;&gt;Tutor: verify + mint SBT
+    Tutor-&gt;&gt;SBT: hold soul-bound credential
+  end</code></pre>
+<h3 id="credential-types">Credential Types</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Purpose</th>
+<th style="text-align: left;">Who mints</th>
+<th style="text-align: center;">Transferable</th>
+<th style="text-align: left;">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">POAP</td>
+<td style="text-align: left;">Proof of attendance / completion</td>
+<td style="text-align: left;">automatic API</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: left;">Student finishes a lesson</td>
+</tr>
+<tr>
+<td style="text-align: left;">SBT (Tutor Credential)</td>
+<td style="text-align: left;">DAO-vetted qualification</td>
+<td style="text-align: left;">DAO governance</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: left;">“Certified Spanish native speaker”</td>
+</tr>
+<tr>
+<td style="text-align: left;">Rating Record</td>
+<td style="text-align: left;">Session feedback</td>
+<td style="text-align: left;">student → IPFS + hash on-chain</td>
+<td style="text-align: center;">n/a</td>
+<td style="text-align: left;">5 stars, comment</td>
+</tr>
+</tbody>
+</table>
+<h3 id="logic-highlights">Logic Highlights</h3>
+<ul>
+<li><strong>Automatic POAP</strong>: triggered by sessionSettled; minimal friction.</li>
+<li><strong>Reputation anchor</strong>: each rating = IPFS CID + hash on-chain → verifiable, append-only.</li>
+<li>DAO vetting: a DAO multisig reviews proofs/ratings → issues an SBT NFT.</li>
+<li>Access control: smart-contract rooms or filters check balanceOf(SBT) &gt; 0.</li>
+</ul>
+<h2 id="component-5-dao-vetting-flow-tutor-credential-sbt">Component 5 — DAO Vetting Flow (Tutor Credential SBT)</h2>
+<ul>
+<li><a href="../dao-vetting/">DAO Vetting Flow</a></li>
+</ul>
+<h2 id="component-6-streaming-payments-with-dynamic-top-up">Component 6 — Streaming Payments with Dynamic Top-Up</h2>
+<h3 id="goals">Goals</h3>
+<ul>
+<li>Pay <strong>exactly per second</strong> while the call is live.</li>
+<li><strong>No fixed cap</strong>; student keeps talking while funded.</li>
+<li><strong>Top up during the call</strong> (adds balance; stream continues).</li>
+<li><strong>Auto-stop on disconnect</strong> without needing the student’s tx.</li>
+</ul>
+<h3 id="key-pieces">Key Pieces</h3>
+<ul>
+<li><strong>Streaming protocol</strong>: Superfluid CFA (or Sablier v2 per-second).</li>
+<li><strong>Controller contract</strong>: has <strong>FlowOperator</strong> perms (Superfluid) / broker role (Sablier) for the student → can start/stop/update flows.</li>
+<li><strong>Heartbeat service + Relayer</strong>: listens to Huddle01 events; calls controller to stop the stream on drop.</li>
+<li><strong>Top-ups</strong>: student upgrades/supplies more tokens (can be gasless via Paymaster/AA if you want).</li>
+</ul>
+<pre class="mermaid"><code>sequenceDiagram
+  autonumber
+  participant Student as Student dApp
+  participant Controller as Controller (Flow Operator)
+  participant Stream as Streaming Protocol (e.g., Superfluid)
+  participant Heartbeat as Heartbeat Service
+  participant Relayer as Relayer Bot
+  participant Tutor as Tutor Wallet
+
+  Note over Student: One-time: grant FlowOperator perms to Controller
+
+  Student-&gt;&gt;Controller: startSession(tutor, ratePerSec)
+  Controller-&gt;&gt;Stream: createFlow(student -&gt; tutor, ratePerSec)
+  Stream--&gt;&gt;Tutor: tokens stream per-second
+  Note over Student,Stream: Student must hold/upgrade tokens as balance
+
+  par During call
+    loop Every few seconds
+      Student-&gt;&gt;Stream: topUp(amount)  %% upgrade/mint to stream balance
+      Stream--&gt;&gt;Student: balance updated
+    end
+  and Heartbeat monitoring
+      Heartbeat--&gt;&gt;Relayer: disconnect OR balance low
+      Relayer-&gt;&gt;Controller: stopSession(sessionId)
+      Controller-&gt;&gt;Stream: deleteFlow(student -&gt; tutor)
+  end
+
+  alt Student ends manually
+    Student-&gt;&gt;Controller: stopSession()
+    Controller-&gt;&gt;Stream: deleteFlow(student -&gt; tutor)
+    Note over Controller,Stream: stream deleted → payment stops instantly
+  end</code></pre>
+<h3 id="behavior-summary_2">Behavior Summary</h3>
+<ul>
+<li><strong>Start</strong>: Student clicks “Start Session” → controller <strong>creates a per-second</strong> stream at the tutor’s rate.</li>
+<li>During call:</li>
+<li>The student’s <strong>streaming balance decreases</strong>; they can <strong>top up anytime</strong> (send/upgrade more tokens).</li>
+<li>UI shows <strong>time remaining at current balance</strong>; warns early.</li>
+<li><strong>Disconnect or end</strong>: Heartbeat/RTC event → relayer calls controller → <strong>stream deleted</strong> immediately.</li>
+<li><strong>Billing</strong>: Exact, continuous—no settlement step needed. The tutor’s wallet accrues in real time.</li>
+</ul>
+<h3 id="why-this-meets-your-constraints">Why this meets your constraints</h3>
+<ul>
+<li>No cap UX: the conversation can continue indefinitely, as long as funds remain.</li>
+<li>Top-up live: student can add funds mid-call (even made gasless later).</li>
+<li>No post-drop paying: stream is deleted by the controller when the heartbeat detects a drop—no student tx needed.</li>
+<li>Tutor sets precise rate: store rate in tokens/sec, show per-minute in UI.</li>
+</ul>
+<h3 id="minimal-contract-surface-pseudocode-not-solidity">Minimal Contract Surface (pseudocode, not Solidity)</h3>
+<ul>
+<li>grantOperator(student → controller, maxRate) — one-time user consent.</li>
+<li>startSession(student, tutor, ratePerSec) → create flow (enforce ratePerSec &lt;= maxRate).</li>
+<li>stopSession(sessionId) → delete flow (callable by student, tutor, or relayer).</li>
+<li>(Optional) updateRate(newRatePerSec) during call if both sides accept.</li>
+</ul>
+<blockquote>
+<p>Superfluid specifics: student grants the Controller FlowOperator permissions (create/update/delete flows) scoped by allowances; Controller uses CFAv1 to manage the stream.
+Sablier v2: use a broker/mediator stream that the Controller can cancel.</p>
+</blockquote>
+<h3 id="top-up-ux-notes">Top-Up UX Notes</h3>
+<ul>
+<li>Warn at thresholds (e.g., 10 min, 3 min remaining at current rate).</li>
+<li>Provide one-click top-up (send/upgrade stablecoin) and consider a gasless paymaster.</li>
+<li>If balance dips below protocol buffer, pause or delete flow before liquidation.</li>
+</ul>
+<h3 id="failure-edge-cases">Failure / Edge Cases</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Case</th>
+<th style="text-align: left;">Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Student wallet runs out mid-call</td>
+<td style="text-align: left;">Stream pauses/stops; UI prompts top-up; call can continue without billing (or you auto-end call).</td>
+</tr>
+<tr>
+<td style="text-align: left;">Student hard disconnects</td>
+<td style="text-align: left;">Heartbeat → Relayer → Controller deletes stream immediately.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Tutor disconnects</td>
+<td style="text-align: left;">Same path; stream stops; student not charged further.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Controller down</td>
+<td style="text-align: left;">Worst case: stream continues until student manually stops; mitigate with redundant relayers/cron.</td>
+</tr>
+</tbody>
+</table>
+<h1 id="architecture-high-level">Architecture (High-Level)</h1>
+<h2 id="diagram">Diagram</h2>
+<div class="highlight"><pre><span></span><code>Learner / Contributor (Wallet)
+│
+▼
+Frontend (Next.js / React)
+│
+┌──────────┼───────────────────────────────┐
+│ │ │
+▼ ▼ ▼
+Wallet Huddle01 SDK Credential Mint
+Connect (Live Sessions) (POAP or minimal ERC-721)
+(wagmi/viem) │ │
+└───────────► Completion Signal │
+│
+▼
+Reward Reminder / Claim payment(testnet)
+</code></pre></div>
+<h2 id="components">Components</h2>
+<ul>
+<li><strong>Frontend:</strong> Next.js + wagmi/viem for wallet connect.</li>
+<li><strong>Video:</strong> <strong>Huddle01</strong> for low-latency, wallet-aware live sessions (optionally token-gated).</li>
+<li><strong>Credentials:</strong> <strong>POAP</strong> (or minimal ERC-721) as proof of completion/participation.</li>
+<li><strong>Payment:</strong> Streaming payment should be terminated upon session completion</li>
+<li><strong>Serverless (optional for MVP):</strong> simple scheduling/metadata endpoints if needed.</li>
+</ul>
+<h2 id="primary-flows">Primary Flows</h2>
+<ol>
+<li><strong>Join &amp; Learn</strong></li>
+<li>Connect wallet → view schedule → join live Huddle01 session.</li>
+<li><strong>Verify &amp; Credential</strong></li>
+<li>Host marks completion → participant mints POAP/credential.</li>
+<li><strong>Reward (MVP)</strong></li>
+<li>Display mock reward, tutor should receive payment</li>
+</ol>
+<h2 id="notes-constraints">Notes &amp; Constraints</h2>
+<ul>
+<li><strong>MVP:</strong> minimize backend; prefer client-side + third-party SDKs.</li>
+<li><strong>Abuse prevention (post-MVP):</strong> host attestation, time-in-session checks, or allowlist for early pilots.</li>
+<li><strong>Scalability:</strong> start single language (Spanish), design flows to be language-agnostic.</li>
+</ul>
+<h2 id="future-integrations-post-hackathon">Future Integrations (Post-Hackathon)</h2>
+<ul>
+<li><strong>Chainlink</strong>: attestations / automation for scheduled tasks.</li>
+<li><strong>Reputation</strong>: simple on-chain badges → aggregated contributor profile.</li>
+<li><strong>Storage</strong>: IPFS/Arweave for session metadata or recordings if needed.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
